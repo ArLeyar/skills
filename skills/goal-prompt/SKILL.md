@@ -7,6 +7,8 @@ description: Turn the task at hand into a well-formed condition for the native /
 
 Produce one paste-ready `/goal` condition, plus at most two lines of caveat. Nothing else.
 
+Work with no finish line — watching CI, babysitting a PR, reacting to new commits — is not a goal at all. There is no end state for an evaluator to confirm, so it belongs in `loop-prompt`, which covers `/loop` and event monitors. Hand it over and stop.
+
 A bare invocation, or one whose argument describes work, means compose. The words `review` and `analyze` as the entire argument select those modes instead and skip the whole compose procedure — they are not goals to write conditions about.
 
 ## Why conditions fail (the one mechanic that governs everything)
@@ -150,7 +152,9 @@ Output, in this order, nothing more:
 2. One line: whether the run needs permissions raised. Setting a goal does not change them — in Claude Code that means auto mode, in Codex a sandbox and approval policy wide enough for the work. Without it the run stops at the first prompt nobody is there to answer.
 3. One line only if something is genuinely at stake: what was forbidden and why.
 
-Do not run the goal. Do not explain the framework. The user pastes it themselves.
+Do not explain the framework. The user pastes it themselves — not out of caution, but because there is no other way in: `/goal` is a built-in local command that installs a Stop hook, not a skill and not a tool, so nothing the model can call sets it. (`loop-prompt` is the opposite case and arms its own watch; do not carry that habit over here.)
+
+The one alternative, when the user wants it running without pasting, is a separate non-interactive session — the command declares non-interactive support, so `claude -p '/goal …'` with a permission mode wide enough for the work starts one. That is a different session with a different transcript, not this one; offer it only when the user asks to hand the run off, and say plainly that this conversation will not be the one working.
 
 ## Where the history actually lives
 
