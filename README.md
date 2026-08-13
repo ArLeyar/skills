@@ -37,6 +37,7 @@ In Claude Code, `/goal` is a session-scoped prompt-based Stop hook. After each t
 - A condition is checkable only if the main model **prints the proof** during the run. "`src/api.ts` is under 200 lines" is unverifiable; "`wc -l src/api.ts` prints a number under 200" is.
 - The agent optimizes exactly what the condition measures. Anything unmeasured degrades freely — so the condition blocks the obvious cheats (editing the tests, deleting the failing case, weakening the assertion).
 - A command on an `ask` or `deny` list freezes the run mid-flight. Force-push in particular is never necessary: merge main into the branch instead of rebasing onto it.
+- Auto mode blocks more than those lists: a classifier flags `git stash`, `git reflog` and `cd` outside the session's tree, blocks accumulate per agent until every command is gated, and retrying a blocked command extends the streak. So the condition builds on commands that pass clean and says outright that a blocked command is never retried or paraphrased.
 - Anything destructive or outward-facing gets named in the condition even when the repo already forbids it, because the evaluator cannot read the repo.
 
 ## loop-prompt
@@ -59,6 +60,20 @@ Unlike `/goal`, these can be armed by the model, and the skill does that rather 
 - There is no memory between ticks except the transcript, which compacts. State is re-derived from `git`, `gh`, a file — never from "continue what you were doing".
 - The prompt says what a tick with nothing to do looks like, or every quiet fire becomes an essay.
 - For a monitor, silence is not success: a filter matching only the happy path stays quiet through a crash, and quiet looks exactly like "still running".
+
+## Use cases
+
+| You just | Say | You get |
+|---|---|---|
+| Agreed on a plan or diagnosed failing tests, and want it finished unattended | `/goal-prompt` | one pasteable `/goal` condition built from this conversation plus the repo |
+| Have a task in mind, no prior discussion | `/goal-prompt migrate the payments module` | same, with the argument as the target |
+| Finished a goal run | `/goal-prompt review` | one question, one line in `~/.claude/goal-quality.jsonl` — whether the work was any good |
+| Accumulated a few runs | `/goal-prompt analyze` | failure patterns from the hosts' own history, and concrete edits to the skill when one hits three times |
+| Want a reaction to an event | `/loop-prompt watch main for new commits and review them` | a `Monitor` script with a last-seen marker, armed, with the reaction stated |
+| Want a repeated sweep with no event to hook | `/loop-prompt triage open PRs` | a `/loop` prompt that is idempotent, re-derives its state, and stays quiet on quiet ticks |
+| Want the same watch in every session of a repo | `/loop-prompt make this the repo default` | `.claude/loop.md`; a bare `/loop` then runs it |
+
+Russian walkthrough of the same scenarios, with the usual failure modes: [USECASES.ru.md](USECASES.ru.md).
 
 ## Install
 

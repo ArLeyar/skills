@@ -70,6 +70,14 @@ for p in sys.argv[1:]:
 
 **An `ask` rule beats auto mode.** The run stops on a permission prompt that nobody is there to answer, and the goal dies there — not failed, just frozen mid-run. A `deny` rule is cleaner but no better: the command simply cannot run. Either way, a condition that requires such a command cannot be satisfied.
 
+**The `ask` list is not the only prompt source — auto mode itself runs a classifier over every command, and its blocks kill unattended runs the same way.** Three mechanics, all observed in real runs:
+
+- **Prompt-prone commands.** The classifier flags `git stash` (all subcommands: `apply`, `pop`, `list`), `git reflog`, and `cd` to a path outside the session's project dir — a sibling worktree, another repo. Bundling `cd` into a compound invites the classifier even inside the project tree: a real run got 6 consecutive blocks on `cd .worktrees/x && git status` where the bare command would pass. Worktree needed → the host's own tool (`isolation: "worktree"` on agents, `EnterWorktree`), never a raw `cd`; path needed → `git -C <path>` / absolute paths.
+- **The block streak.** Blocks accumulate per agent: after ~5 consecutive blocks the harness gates that agent's *every* command, even `git status`. Retrying a blocked command or rephrasing it into a synonym digs the hole — each attempt is another block on the streak. So the condition says it outright: `a blocked command is never retried or paraphrased — treat it as a blocker: stop that line of work and report`. In multi-agent runs, add: an agent with 2+ blocks is finished and replaced by a fresh agent in the same worktree — the streak dies with the agent.
+- **The classifier itself can fall over** (`Stage 2 classifier error`, `claude-sonnet temporarily unavailable`) — transient, blocks safe commands too. Nothing to encode in the condition beyond the no-retry rule above, which already covers it.
+
+Build the run's workflow out of the set that passes clean: package-manager scripts, `git add/commit/push/fetch/merge/diff/show/log/status`, `gh pr *`, `rg`, plain interpreters. Everything outside it — `stash`, `reflog`, `reset --hard`, `clean`, `checkout -- .`, `restore .`, `rebase` — is banned by name when agents are involved. (`stash` is doubly poisoned in worktrees: one `.git` means one shared stash, and parallel agents pop each other's WIP — set work aside via a WIP commit instead.) The general rule: any command whose approval needs a human is banned from the condition, whatever list it is or isn't on.
+
 So: read those lists, and build the condition out of what is left. Today that means force-push in all its spellings (`--force`, `-f`, `--force-with-lease`), `reset --hard`, `clean -f`, `checkout -- .`, `restore .`, and the Jira and Confluence write operations. Whatever the lists say when you read them wins over this sentence.
 
 **Force-push is never necessary, so never require the thing that leads to it.** A branch falling behind main is fixed by merging main into it, which pushes normally. Only a rebase of already-pushed commits forces a force-push — so the condition says `merge main into the branch` and never `rebase onto main`. This matters even when the condition says nothing about pushing: `rebase` alone is enough to walk the run into a prompt three steps later.
@@ -140,7 +148,7 @@ Reject your own draft if any answer is no:
 4. Are the obvious cheats blocked (editing tests instead of code, deleting the failing case, weakening the assertion)?
 5. Is there a turn cap?
 6. Is every risky action forbidden by name?
-7. Does the condition require anything on an `ask` or `deny` list — force-push, `reset --hard`, `clean -f`, a Jira write? A prompt nobody answers freezes the run. Replace it (merge instead of rebase) or drop it.
+7. Does the condition require anything on an `ask` or `deny` list — force-push, `reset --hard`, `clean -f`, a Jira write — or anything the auto-mode classifier flags: `stash`, `reflog`, `cd` into another worktree or repo? A prompt nobody answers freezes the run. Replace it (merge instead of rebase, WIP commit instead of stash, `git -C` / host worktree tool instead of `cd`) or drop it, and state the no-retry rule: a blocked command is never retried or paraphrased.
 8. Is the measured length at or under 3900 characters — the cap minus its headroom, measured with the command above, not estimated?
 9. Is this actually worth a goal? A task finishing in one or two turns should stay a normal prompt — say so instead of emitting.
 
@@ -240,6 +248,9 @@ Any condition touching deploys, releases, force-push, schema or data migrations,
 | `refactor X` with no cap | runs until interrupted | add `stop after N turns` |
 | a philosophical end state | burns tokens forever | reject and ask for the observable |
 | `rebase onto main, then force-push` | `ask` rule fires, run freezes on a prompt nobody sees | merge main into the branch and push normally |
+| `cd` into another worktree/repo mid-run | built-in prompt fires even in auto mode, run freezes | stay in the session's tree; `git -C <path>`; new worktree via host tool (`isolation: "worktree"`, `EnterWorktree`) |
+| `git stash` in a multi-worktree run | classifier blocks it, and one shared `.git` means agents pop each other's WIP | set work aside via a WIP commit on the branch |
+| retry a blocked command / find a synonym | each attempt extends the block streak until every command is gated | one block = stop that line, report; 2+ blocks on an agent = replace the agent |
 | three goals joined by "and" | evaluator flips on partial work | pick one, queue the rest |
 
 ## Reference
