@@ -71,6 +71,12 @@ for DEST in "${TARGETS[@]}"; do
   else
     say "Updating transcribe v$OLD_VER -> v$NEW_VER -> $DEST"
   fi
+  # Someone who copied the skill dir by hand then ran the copy's own installer would have
+  # SRC == DEST, and the rm below would delete the source before cp reads it.
+  if [ "$(cd "$SRC" && pwd -P)" = "$(cd "$DEST" 2>/dev/null && pwd -P || echo "")" ]; then
+    echo "SKIPPED: $DEST is this installer's own source; nothing to copy."
+    continue
+  fi
   rm -rf "$DEST"
   mkdir -p "$DEST/scripts"
   cp "$SRC/scripts/transcribe.py" "$SRC/scripts/convert.py" "$DEST/scripts/"

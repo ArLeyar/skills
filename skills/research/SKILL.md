@@ -29,12 +29,12 @@ Tool names in this file are Claude Code's. **Codex runs the same workflow** with
 
 | Capability | Claude Code | Codex |
 |---|---|---|
-| Web search | `WebSearch` | built-in web search (`--search`, or `web_search` enabled in `config.toml`) |
+| Web search | `WebSearch` | built-in web search (`--search`, or `web_search = "live"` in `config.toml`) |
 | Fetch one page with a question | `WebFetch` | the same search tool, asked for the specific page; or a fetch MCP |
-| Parallel sub-research | `Agent` subagents | Codex subagents — same fan-out, same "they cannot ask follow-ups" limit |
+| Parallel sub-research | `Agent` subagents | Codex subagents — same fan-out; a subagent there can message its parent, so a blocked one reports back rather than guessing |
 | Save, commit | `Write`, `Bash` | shell access |
 
-Where this file names a Claude tool, read it as the capability, not the requirement. One difference worth planning around: Codex charges a token budget against a run and can end it `budget_limited`, so in `deep` mode prefer fewer, better-aimed fetches over a wide sweep.
+Where this file names a Claude tool, read it as the capability, not the requirement. One thing to watch on Codex: a run started under a budgeted Goal can end `budget_limited` mid-research, so when the budget is explicit, spend it on fewer, better-aimed fetches and write the report before the sweep is exhaustive.
 
 ## Pipeline
 
@@ -202,7 +202,7 @@ Agent("Research <sub-topic>. Search the web, fetch primary sources.
 
 Then synthesize their returns yourself. Do not let a subagent write the final report: it saw one slice and will present it as the whole.
 
-Skip subagents for `quick` mode, for narrow topics, and whenever the research needs iterative refinement — a subagent cannot come back with a follow-up question, so anything ambiguous comes back wrong rather than unanswered.
+Skip subagents for `quick` mode and for narrow topics. For research that needs iterative refinement, the deciding question is whether a stuck subagent can reach anyone: on hosts where it can message its parent, tell it to report the ambiguity instead of resolving it; where it cannot, keep the work in the main thread, because an ambiguity a subagent resolves alone comes back wrong rather than unanswered.
 
 ## Rules
 

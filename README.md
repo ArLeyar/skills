@@ -27,11 +27,13 @@ Symlinks work too, and keep one copy current in both hosts:
 ln -s "$PWD/skills/skills/<name>" ~/.claude/skills/<name>
 ```
 
-`transcribe` has its own installer, because it also pulls ffmpeg, uv and a local model:
+**`transcribe` is the exception — copying it by hand leaves it broken.** Its `SKILL.md` ships a `__SKILL_DIR__` placeholder that only the installer substitutes, and the installer also pulls ffmpeg, uv and the model:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ArLeyar/skills/main/skills/transcribe/install.sh | bash
 ```
+
+It installs into every host it finds (`~/.codex/skills`, `~/.claude/skills`), and re-running it is how you update. Details, including the optional Russian fine-tune and the diarization setup: [skills/transcribe/README.md](skills/transcribe/README.md).
 
 Invoke any skill by name: `/research`, `/consilium`, `/cross-review`, `/goal-prompt`.
 
@@ -79,7 +81,9 @@ Costs two model runs. Bare "review this" does not trigger it.
 
 Audio and video to text on an Apple Silicon Mac. Offline, free, nothing leaves the machine.
 
-Handles `.m4a`, `.mp3`, `.wav`, `.caf`, `.ogg`, `.flac`, and video too. Records from the microphone on request, separates speakers, splits hour-long recordings on silence, and cleans up Whisper's hallucination loops on silent stretches. Tuned for Russian speech with English tech jargon mixed in; any Whisper language works.
+Handles `.m4a`, `.mp3`, `.wav`, `.caf`, `.ogg`, `.flac`, and video too. Records from the microphone on request, splits hour-long recordings on silence, and cleans up Whisper's hallucination loops on silent stretches. Tuned for Russian speech with English tech jargon mixed in; any Whisper language works.
+
+Speaker separation is a separate engine (`-e diarize`) and needs a free HuggingFace token plus accepted model terms; without the token it falls back to plain transcription rather than failing.
 
 Sending a bare path to an audio file is enough to trigger it — no command needed.
 
@@ -87,7 +91,7 @@ Sending a bare path to an audio file is enough to trigger it — no command need
 
 Removes the predictable patterns that mark text as machine-written: throat-clearing openers, adverbs, binary contrasts, dramatic fragments, narrator-from-a-distance voice.
 
-Vendored from [hardikpandya/stop-slop](https://github.com/hardikpandya/stop-slop) (MIT, license kept alongside the skill), with one section added: the difference between slop and intentional rhetoric. Anaphora, antithesis and climax are craft; the skill kills the unconscious version and keeps the deliberate one.
+A modified fork of [hardikpandya/stop-slop](https://github.com/hardikpandya/stop-slop), MIT, with the upstream license kept alongside the skill. Divergence from upstream, so nobody has to diff for it: a section on slop versus intentional rhetoric (anaphora, antithesis and climax are craft — the skill kills the unconscious version and keeps the deliberate one), a CV and cover-letter fingerprint list, and edits throughout the three reference files.
 
 ## goal-prompt
 
@@ -150,7 +154,7 @@ Unlike `/goal`, these can be armed by the model, and the skill does that rather 
 | Need to decide something and the answer is on the internet | `/research compare Postgres vs ClickHouse for event storage` | a cited report saved where this repo keeps them |
 | Need a second and third opinion that have not read each other | `/consilium` | three independent answers plus the consensus and the divergence |
 | Have a plan or a diff you want torn apart twice | `/cross-review plan.md` | Claude's findings, Codex's findings, and what only one of them caught |
-| Have an hour of recorded conversation | drop the file path in chat | a transcript with speakers separated |
+| Have an hour of recorded conversation | drop the file path in chat | a cleaned-up transcript, offline; ask for diarization and it labels who spoke |
 | Agreed on a plan and want it finished unattended | `/goal-prompt` | one pasteable `/goal` condition built from this conversation plus the repo |
 | Want a reaction to an event while you are away | `/loop-prompt watch main for new commits and review them` | a `Monitor` script with a last-seen marker, armed |
 

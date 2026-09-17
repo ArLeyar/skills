@@ -61,7 +61,7 @@ Add no meaning. Delete.
 
 ## Resume / CV Killers (2026 AI-Fingerprint List)
 
-Recruiters in 2026 flag these as instant AI-generated signals. 49% of hiring managers auto-reject resumes containing them. Strip from any CV, cover letter, LinkedIn bullet, or professional summary.
+Recruiters read these as AI-generated signals. Strip from any CV, cover letter, LinkedIn bullet, or professional summary.
 
 **Banned action verbs (top fingerprints):**
 
