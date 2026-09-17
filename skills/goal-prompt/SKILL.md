@@ -93,11 +93,16 @@ Ask at most 3 questions, and only for gaps that change the condition:
 
 If the repo answers everything and no action is risky, ask nothing and emit the condition.
 
+**Whatever stays unresolved at emit time gets resolved by the agent, silently and in its own favour.** Agents take a specification at face value: they do not surface its contradictions, do not name the assumption they just made, and do not stop to check which reading was meant. And an unattended run has nobody to ask — the question that would have been cheap now is unaskable in twenty minutes. So every ambiguity is either asked about here or written into the condition as a decision already taken. Leaving it out is not neutrality; it is delegating the call to whichever reading is easiest to satisfy.
+
 ### 3. Compose
 
 ```text
-<measurable end state>, proven by <command whose output lands in the transcript>.
-Do not <hard limits>. Stop after <N> turns if not met.
+<measurable end state>, proven by <command whose output lands in the transcript>
+and by <a check of a different kind>, both re-run after the last edit and printed.
+<what must hold when something fails>, printed by <the check that covers it>.
+Do not <hard limits>. A third identical command is a blocker: stop and report.
+Stop after <N> turns if not met.
 ```
 
 Every condition carries four parts:
@@ -107,7 +112,19 @@ Every condition carries four parts:
 | End state | Exactly one. Test result, exit code, file count, empty queue. Not an adjective. |
 | Proof | A command the main model will run, whose output the evaluator can read. |
 | Limits | What must not change, and every risky action explicitly forbidden. |
-| Cap | A turn or time bound. Claude enforces no token budget of its own; Codex does, and can end a run `budget_limited`. |
+| Cap | A turn or time bound, written into the condition rather than left to an external limit — an agent that cannot see its budget prioritises as if it had none. Claude enforces no token budget of its own; Codex does, and can end a run `budget_limited`. |
+
+**Three items are mandatory in `Done when`, and each answers a measured failure mode of long unattended runs:**
+
+- **Re-verification after the last edit.** Not `tests pass` but `after the final change, <check> was run again and printed exit 0`. On ultra-long-horizon benchmarks 99.6% of failed runs carried a validation signal the agent could have seen and never looked at, and 19% of unfinished runs ended in a self-declared finish with work still left. Agents overestimate completion and under-invest in the final check; a green run from earlier in the session is the specific thing they mistake for proof.
+- **Two proofs of different kinds.** One command is one thing to game, and prompt-level prohibitions decay over hour-scale runs — an agent with a shell probes any single check until it gives. Pair the test run with something of another nature: a typecheck, a lint, a behavioural check, a count.
+- **One failure-path item, proven the same way as the rest.** The agent optimises exactly what is measured and nothing else, so a condition naming only the happy path gets the happy path — no error handling, no edge case, and the work is technically complete. Name the behaviour on failure *and* the command that prints it: `the malformed-input case is covered — <test> names it and prints a pass`. An adjective about robustness is the failure mode this whole file exists to prevent, and it is easiest to smuggle back in through this item.
+
+**All three attach to the same end state, not to new ones.** Two proofs mean two lenses on one outcome, not two outcomes joined by "and": `tests pass and the API returns 400 on bad input` is the stitched form that fails on partial work. Write one end state, then the checks that see it from different angles.
+
+These three do not extend the budget, they replace part of it: their characters come out of the repo boilerplate the condition should never have carried. They are cheaper than they look — a minimal condition carrying all of them, plus the turn cap and the risky-action prohibitions, measures near 1000 characters, so the 2500-3000 aim holds with the new floor in place.
+
+**Idle spin is a blocker, and catching it is cheaper than the turn cap.** Repeated identical tool calls are the strongest observed predictor of a run dying by timeout — one measured harness produced 63 of its 83 timeouts, and pass rate fell from 41.9% to 3.2% as consecutive identical calls accumulated. One line covers it: `the same command with the same arguments a third time is a blocker — stop that line of work and report`.
 
 **Hard cap: 4000 characters in Claude Code, counted, not eyeballed.** `/goal` rejects anything longer outright (`Goal condition is limited to 4000 characters`) and the whole emission is wasted — this has already happened eight times, at 4010, 4119, 4368, 4929, 5901, 6305, 9084 and 15217 characters. Codex has no such limit; it stores an over-long objective as an attachment. Write to the Claude cap regardless, so one condition serves both.
 
@@ -121,7 +138,9 @@ Write that file with the host's file-writing tool, never with a heredoc: a condi
 
 Aim for 2500-3000. The cap is where the command fails, not where a good condition lands: half the emitted conditions sat at 3700-3990, which is text expanding to fill the space available, and every one that broke the cap did so because nothing was ever kept in reserve. A condition that needs 3900 characters is usually carrying repo boilerplate — see below.
 
-Over 3900 → cut, in this order, until it fits: repeated rationale, examples inside `Context`, prohibitions already covered by a broader one, per-item wording collapsed into one rule. Never cut `Done when`, the turn cap, or a risky-action prohibition. Long recipes (how to type a catch block, how to name a helper) belong in a file the condition points at, not in the condition.
+Over 3900 → cut, in this order, until it fits: repeated rationale, examples inside `Context`, prohibitions already covered by a broader one, per-item wording collapsed into one rule. Never cut `Done when`, the turn cap, the idle-spin line, or a risky-action prohibition — the idle-spin line sits outside `Done when` in both templates, which is exactly how it gets trimmed by a composer working to fit. Long recipes (how to type a catch block, how to name a helper) belong in a file the condition points at, not in the condition.
+
+**Do not spend the budget on scaffolding that stopped paying.** Heavy XML tagging for structure, role preambles (`You are an experienced SRE`) and reasoning incantations (`think step by step`) bought measurable points on older models and buy none now: current models were tuned against those exact tics, and extended thinking covers the third. Tags stay only where something must be machine-extracted from the transcript. Everything else is plain declarative sentences, one per rule — the characters saved are the ones the mandatory items above need.
 
 For large work, use the five-block form and keep `On block` — without it the agent invents a workaround or spins:
 
@@ -129,8 +148,12 @@ For large work, use the five-block form and keep `On block` — without it the a
 Goal: <one verifiable outcome>
 Context: <facts the agent cannot derive: paths, source of truth, decisions>
 Constraints: <hard limits, out of scope>
-Done when: 1) <binary check, ideally a shell command> 2) <second check>
-On block: fail fast, <where to escalate>, <what to do with an unspecifiable item>
+Done when: 1) <binary check, a shell command> 2) <a check of a different kind>
+          3) <the checks re-run after the last edit, printing their result>
+          4) <what must hold when something fails: the error path, the edge case>,
+             printed by the check that covers it
+On block: fail fast, <where to escalate>, <what to do with an unspecifiable item>.
+          The same command with the same arguments a third time is a blocker.
 Stop after <N> turns.
 ```
 
@@ -144,13 +167,17 @@ Reject your own draft if any answer is no:
 
 1. One measurable end state, not several stitched with "and also"?
 2. Will the proof actually be printed during the run?
-3. Would a lazy-but-literal agent satisfy this while doing bad work? If yes, the condition measures the wrong thing — add the quality anchor (a reference doc, a mockup, an example output), not an adjective.
-4. Are the obvious cheats blocked (editing tests instead of code, deleting the failing case, weakening the assertion)?
-5. Is there a turn cap?
-6. Is every risky action forbidden by name?
-7. Does the condition require anything on an `ask` or `deny` list — force-push, `reset --hard`, `clean -f`, a Jira write — or anything the auto-mode classifier flags: `stash`, `reflog`, `cd` into another worktree or repo? A prompt nobody answers freezes the run. Replace it (merge instead of rebase, WIP commit instead of stash, `git -C` / host worktree tool instead of `cd`) or drop it, and state the no-retry rule: a blocked command is never retried or paraphrased.
-8. Is the measured length at or under 3900 characters — the cap minus its headroom, measured with the command above, not estimated?
-9. Is this actually worth a goal? A task finishing in one or two turns should stay a normal prompt — say so instead of emitting.
+3. Does `Done when` require the checks re-run *after the last edit*, rather than accepting a green run from earlier in the session?
+4. Are there two proofs of different kinds, or is one command carrying the whole verdict — and do both attach to the same end state rather than adding a second one?
+5. Is there an item about what happens on failure — an error path, an edge case — with a command that prints it, not an adjective about robustness?
+6. Would a lazy-but-literal agent satisfy this while doing bad work? If yes, the condition measures the wrong thing — add the quality anchor (a reference doc, a mockup, an example output), not an adjective.
+7. Are the obvious cheats blocked: editing tests instead of code, deleting the failing case, weakening the assertion, writing code to fit a known test manifest rather than the requirement, satisfying the check from a cached or stale run, reaching around the check through the environment instead of through the code?
+8. Is there a turn cap, stated in the condition rather than left implicit?
+9. Is the idle-spin rule present — third identical command is a blocker?
+10. Is every risky action forbidden by name?
+11. Does the condition require anything on an `ask` or `deny` list — force-push, `reset --hard`, `clean -f`, a Jira write — or anything the auto-mode classifier flags: `stash`, `reflog`, `cd` into another worktree or repo? A prompt nobody answers freezes the run. Replace it (merge instead of rebase, WIP commit instead of stash, `git -C` / host worktree tool instead of `cd`) or drop it, and state the no-retry rule: a blocked command is never retried or paraphrased.
+12. Is the measured length at or under 3900 characters — the cap minus its headroom, measured with the command above, not estimated?
+13. Is this actually worth a goal? A task finishing in one or two turns should stay a normal prompt — say so instead of emitting.
 
 ### 5. Emit
 
@@ -232,6 +259,12 @@ Then produce the payoff: **concrete edits to this file.** A pattern hitting thre
 
 Never invent a pattern to have something to say. "Nine runs, no shared failure mode" is a valid result.
 
+**Once the history is thick enough — roughly 20 runs carrying quality notes — this mode has a better algorithm available than reading them by hand.** Reflective prompt optimisers beat expert-written prompts by keeping *competing* instruction variants alive instead of one lineage that drifts — in the published case, instruction text alone moved a benchmark from 67% to 93%. What that buys here is one concrete change of behaviour, and only above the threshold:
+
+Take the rule carrying the most failure tags and propose **two** rewrites of it, not one. Emit them alternately on the next runs and, once each has five, keep the one with fewer failure tags and delete the other from this file. Which variant a run used is recoverable from the condition itself — SQLite for Codex, the transcript for Claude — so this needs no bookkeeping at emit time, and the rule against writing any is unchanged. One variant edited in place cannot be compared with anything, which is why every past `analyze` pass produced improvements nobody could confirm.
+
+Below the threshold there is nothing to compare against, and two variants over four runs is noise with extra steps: read them by hand, propose the single edit as described above, and say the data is thin.
+
 ## Safety
 
 Any condition touching deploys, releases, force-push, schema or data migrations, production data, money, or outbound messages to real people gets an explicit prohibition in the text, even when the user did not raise it. Repo rules (`CLAUDE.md`) that require human approval for an action mean that action is forbidden inside a goal, not merely gated — an unattended loop cannot hold an approval.
@@ -245,6 +278,11 @@ Any condition touching deploys, releases, force-push, schema or data migrations,
 | `improve the dashboard` | nothing to evaluate | name the tests and a size or perf budget |
 | `the app is production-ready` | no observable proof | list the specific checks that stand for readiness |
 | `all tests pass` (no limits) | agent edits the tests | forbid touching test files |
+| `all tests pass`, proven once | the green run predates the last edit, and the agent treats it as proof anyway | require the check re-run *after* the final change |
+| one command carrying the whole verdict | a single check is a single thing to game, and an hour-long run finds the way | pair it with a check of another kind (typecheck, behaviour, count) |
+| happy path only | error handling and edge cases were never measured, so they were never written | one `Done when` item about behaviour on failure |
+| no idle rule | repeated identical calls are the top predictor of death by timeout | third repeat of the same command = blocker, stop and report |
+| XML scaffolding, role preamble, `think step by step` | measured gain is gone on current models, and the characters come out of a hard 4000 | plain declarative sentences |
 | `refactor X` with no cap | runs until interrupted | add `stop after N turns` |
 | a philosophical end state | burns tokens forever | reject and ask for the observable |
 | `rebase onto main, then force-push` | `ask` rule fires, run freezes on a prompt nobody sees | merge main into the branch and push normally |

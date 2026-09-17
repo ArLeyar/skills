@@ -113,9 +113,14 @@ Writes a paste-ready condition for the native `/goal` command, and learns from h
 **Compose** (default) — reads the repo (test/lint/build commands, `CLAUDE.md`, permission `ask`/`deny` lists) and the current conversation, asks at most three questions for what genuinely cannot be derived, and emits one condition under the 4000-character cap:
 
 ```text
-<measurable end state>, proven by <command whose output lands in the transcript>.
-Do not <hard limits>. Stop after <N> turns if not met.
+<measurable end state>, proven by <command whose output lands in the transcript>
+and by <a check of a different kind>, both re-run after the last edit and printed.
+<what must hold when something fails>, printed by <the check that covers it>.
+Do not <hard limits>. A third identical command is a blocker: stop and report.
+Stop after <N> turns if not met.
 ```
+
+Three of those lines are not style. Each answers a measured failure of long unattended runs: agents treat a green check from earlier in the session as proof of work done since, a single check is a single thing to game over an hour, and a condition naming only the happy path gets code with no error handling and calls it finished.
 
 It does not run the goal, and it cannot: `/goal` is a built-in local command that installs a Stop hook, not a skill and not a tool, so nothing the model can call sets it. You paste it yourself.
 
