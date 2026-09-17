@@ -33,6 +33,11 @@ check "destination path written in" "$(grep -q "$H/.agents/skills/transcribe" "$
 check "README shipped alongside" "$([ -f "$H/.agents/skills/transcribe/README.md" ] && echo 0 || echo 1)"
 check "no staging dir left behind" "$([ -z "$(find "$H" -name '.transcribe.incoming.*' 2>/dev/null)" ] && echo 0 || echo 1)"
 
+echo "1b. the version is read from metadata, so a re-run recognises the install"
+HOME="$H" bash "$SRC/install.sh" >"$SB/h1b.log" 2>&1
+check "reports the version, not an empty string" "$(grep -qE 'v[0-9]+\.[0-9]+\.[0-9]+' "$SB/h1b.log" && echo 0 || echo 1)"
+check "second run says it is already current" "$(grep -q 'Already on the latest version' "$SB/h1b.log" && echo 0 || echo 1)"
+
 echo "2. home under version control still installs"
 H="$SB/h2"; fresh_home "$H"; mkdir -p "$H/.agents"
 git -C "$H" init -q 2>/dev/null

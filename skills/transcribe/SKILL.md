@@ -1,9 +1,11 @@
 ---
 name: transcribe
 description: Transcribe audio from file or microphone. Russian + IT slang optimized. Auto-chunks long files. Local MLX whisper (default, offline, free), optional ElevenLabs Scribe or OpenAI cloud engines, or local speaker diarization. Use when user asks to transcribe, convert speech to text, or record and transcribe audio. ALSO auto-activate (no "transcribe" word needed) whenever the user sends, pastes, or links a path/URL to an audio file — .m4a (most common), .mp3, .wav, .caf, .ogg, .flac — or a video file (.mp4, .mov, .webm, .mkv); a bare audio path/link means "transcribe this".
-allowed-tools: Read, Bash, Glob
-user_invocable: true
-version: 1.4.0
+allowed-tools: Read Glob Bash(uv run:*) Bash(ls:*) Bash(file:*)
+license: MIT
+compatibility: macOS on Apple Silicon. Needs ffmpeg and uv, which its installer provides; the cloud engines need their own API keys.
+metadata:
+  version: "1.4.0"
 ---
 
 # Audio Transcription

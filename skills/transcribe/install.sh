@@ -37,8 +37,15 @@ for f in SKILL.md scripts/transcribe.py scripts/convert.py; do
   [ -f "$SRC/$f" ] || die "source is incomplete: $SRC/$f is missing."
 done
 
-# Frontmatter only, first match, or a stray "version: " in the body makes this multi-line.
-NEW_VER="$(sed -n '/^version:/{s/^version:[[:space:]]*//p;q;}' "$SRC/SKILL.md")"
+# The Agent Skills spec keeps client-defined fields under metadata, so the version lives at
+# metadata.version. Frontmatter only and first match: a "version:" line in the body must not win.
+read_version() {
+  awk '/^---$/{n++; next}
+       n==1 && /^[[:space:]]*version:[[:space:]]*/ {
+         sub(/^[[:space:]]*version:[[:space:]]*/, ""); gsub(/["\047]/, ""); print; exit }
+       n>=2 {exit}' "$1" 2>/dev/null
+}
+NEW_VER="$(read_version "$SRC/SKILL.md")"
 [ -n "$NEW_VER" ] || die "no version field in $SRC/SKILL.md; refusing to install an unversioned skill."
 
 # --- ffmpeg (mandatory, all engines) ---
@@ -104,7 +111,7 @@ for DEST in "${TARGETS[@]}"; do
     continue
   fi
 
-  OLD_VER="$(sed -n '/^version:/{s/^version:[[:space:]]*//p;q;}' "$DEST/SKILL.md" 2>/dev/null || true)"
+  OLD_VER="$(read_version "$DEST/SKILL.md" || true)"
   if [ -z "$OLD_VER" ]; then
     say "Installing transcribe v$NEW_VER -> $DEST"
   elif [ "$OLD_VER" = "$NEW_VER" ]; then

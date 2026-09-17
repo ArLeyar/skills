@@ -34,6 +34,8 @@ ln -s "$PWD/skills/$skill" ~/.claude/skills/"$skill"
 ln -s "$PWD/skills/$skill" ~/.agents/skills/"$skill"
 ```
 
+Every skill here declares `name`, `description` and `license` per the [Agent Skills spec](https://agentskills.io/specification), so both hosts read the same file; `tests/validate_skills.py` checks that on demand.
+
 Invoking them differs by host: Claude Code takes `/research`, Codex takes `$research` or `/skills`. Both also trigger on plain requests that match the skill's description, which is how most of these get used.
 
 **`transcribe` is the exception — copying it by hand leaves it broken.** Its `SKILL.md` ships a `__SKILL_DIR__` placeholder that only the installer substitutes, and the installer also pulls ffmpeg, uv and the model:

@@ -1,7 +1,9 @@
 ---
 name: consilium
 description: Panel of top models on one task, in parallel and independently — Claude Fable (claude -p), GPT-6 Astra (codex exec), Gemini 3.8 Flash (agy) — then one synthesis into a single report with consensus, divergence, conflicts and merged resources. Primary use is independent parallel RESEARCH on one question (each seat researches alone, saves its own file, the caller aggregates); also a design decision, a plan or code review, "what would you do". Costs three model runs, so trigger only on explicit intent — "/consilium", "консилиум", "собери консилиум", "спроси все модели", "спроси топ-модели", "panel of models", "ask all three". Do NOT auto-trigger on a bare "research" or "review" — those have their own skills; for a two-model review use cross-review.
-allowed-tools: Bash, Read, Write, Skill, Artifact, WebSearch, WebFetch
+allowed-tools: Read Write Skill Artifact WebSearch WebFetch Bash(bash:*) Bash(mktemp:*) Bash(cat:*) Bash(ls:*) Bash(tail:*) Bash(wc:*)
+license: MIT
+compatibility: Needs the claude, codex and agy CLIs on PATH, plus python3 and GNU timeout (coreutils on macOS).
 ---
 
 # Consilium

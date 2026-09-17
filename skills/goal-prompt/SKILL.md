@@ -1,6 +1,7 @@
 ---
 name: goal-prompt
 description: Turn the task at hand into a well-formed condition for the native /goal command in Claude Code or Codex, and learn from how past goals actually went. Defaults to the work just discussed in this conversation when invoked with no arguments; `review` records the one thing no machine logs — whether the work was any good; `analyze` mines the hosts' own goal history for what keeps going wrong. Use when the user says "/goal-prompt", "make this a goal", "turn this into a goal", "write me a goal prompt", "run this until it's done", "поставь цель", "сделай из этого goal", "напиши промпт для цели", or wants Claude to keep working autonomously until something is finished. Asks only for what the repo and the conversation cannot answer, then emits a paste-ready condition. Does NOT run the goal itself.
+license: MIT
 ---
 
 # goal-prompt

@@ -1,6 +1,7 @@
 ---
 name: loop-prompt
 description: Set up unattended watching — picks between a Monitor (react to events as they happen), a /loop (re-run a prompt on a schedule or model-paced), and a loop.md repo default, then writes the prompt or watch script so it survives firing dozens of times with nobody looking. Defaults to the work just discussed in this conversation when invoked with no arguments. Use when the user says "/loop-prompt", "make this a loop", "turn this into a loop", "write me a loop prompt", "keep checking this", "react to new commits", "watch for X and do Y", "поставь на луп", "сделай из этого loop", "следи за X", "реагируй на новые коммиты", or wants Claude to keep watching something while they are away. Arms the watch itself once it is written, confirming first when a tick can push, merge, deploy or message anyone. For work with a finish line, use goal-prompt instead.
+license: MIT
 ---
 
 # loop-prompt

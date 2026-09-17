@@ -1,7 +1,9 @@
 ---
 name: cross-review
-description: Two-model cross-review of any artifact. Fans it out to a Claude reviewer subagent AND Codex (codex exec) in parallel, then synthesizes both into one verdict highlighting where they agree, disagree, and what only one caught. Works for implementation plans, CVs, code/diffs, prose, design docs, skill specs. Costs two model runs, so trigger only on explicit intent: /cross-review, "cross-review", "second opinion with Claude and Codex", "run both reviewers", "прогони через codex и клода". Do NOT auto-trigger on a bare "review this".
-allowed-tools: Agent, Bash, Read, Write
+description: Two-model cross-review of any artifact. Fans it out to a Claude reviewer subagent AND Codex (codex exec) in parallel, then synthesizes both into one verdict highlighting where they agree, disagree, and what only one caught. Works for implementation plans, CVs, code/diffs, prose, design docs, skill specs. Costs two model runs, so trigger only on explicit intent — the words "/cross-review", "cross-review", "second opinion with Claude and Codex", "run both reviewers", "прогони через codex и клода". Do NOT auto-trigger on a bare "review this".
+allowed-tools: Agent Read Write Bash(codex:*) Bash(command:*) Bash(git:*)
+license: MIT
+compatibility: The Codex half needs the codex CLI on PATH; without it the skill runs Claude-only.
 ---
 
 # Cross-Review (Claude + Codex)

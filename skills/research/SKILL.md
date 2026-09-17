@@ -4,6 +4,7 @@ description: Deep internet research with parallel search, source verification, a
 allowed-tools: WebSearch, WebFetch, Agent, Read, Write, Glob, Grep
 metadata:
   short-description: Structured web research, verified against sources, saved as a memo
+license: MIT
 ---
 
 # Deep Research

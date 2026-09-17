@@ -5,6 +5,7 @@ metadata:
   trigger: Writing prose, editing drafts, reviewing content for AI patterns
   author: Hardik Pandya (https://hvpandya.com)
   source: https://github.com/hardikpandya/stop-slop
+license: MIT. LICENSE beside this file carries the upstream copyright.
 ---
 
 # Stop Slop
