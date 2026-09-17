@@ -5,8 +5,7 @@ Agent skills for **Claude Code** and **Codex**. One repo, one install, no plugin
 | Skill | What it does | Hosts |
 |---|---|---|
 | [research](#research) | Web research with parallel search, source verification, and a saved report | Claude, Codex |
-| [consilium](#consilium) | The same brief to three models at once, answered blind, then synthesized | Claude, Codex |
-| [cross-review](#cross-review) | Claude and Codex review one artifact in parallel; the delta is the finding | Claude, Codex |
+| [consilium](#consilium) | The same brief to three models at once, answered blind, then synthesized — a question, or an artifact to tear apart | Claude, Codex |
 | [transcribe](#transcribe) | Audio and video to text, locally on a Mac. Tuned for Russian with English tech jargon | Claude, Codex |
 | [stop-slop](#stop-slop) | Strip AI tells from prose (vendored from [hardikpandya/stop-slop](https://github.com/hardikpandya/stop-slop)) | Claude, Codex |
 | [goal-prompt](#goal-prompt) | Write a `/goal` condition for work that finishes | Claude, Codex |
@@ -18,7 +17,7 @@ Agent skills for **Claude Code** and **Codex**. One repo, one install, no plugin
 git clone https://github.com/ArLeyar/skills.git
 cd skills
 
-skill=research                                 # or consilium, cross-review, stop-slop, …
+skill=research                                 # or consilium, stop-slop, goal-prompt, …
 
 mkdir -p ~/.claude/skills ~/.agents/skills
 cp -R "skills/$skill" ~/.claude/skills/        # Claude Code
@@ -78,15 +77,9 @@ Claude, Codex and Gemini each get the same brief in its own empty scratch direct
 
 Two honest limits, both stated in the skill: isolation is arrangement rather than a sandbox, and agreement is not verification — three models share training data and share blind spots, so a unanimous panel is one opinion sampled three times until a decisive claim gets checked.
 
-Three tiers trade cost against depth, individual seats can be swapped or skipped by environment variable, and each seat's model and final state land in `panel.txt` after the run. It costs three model runs, so it fires only on explicit intent.
+Three tiers trade cost against depth, individual seats can be swapped or skipped by environment variable, and each seat's model and final state land in `panel.txt` after the run. It costs a model run per seat, so it fires only on explicit intent.
 
-## cross-review
-
-Two models review the same artifact in parallel, weighted differently, and the synthesis leads with where they disagree.
-
-Works on anything with a file: implementation plan, diff, CV, prose, design doc, config, another skill. Missing `codex` degrades to a Claude-only review with a warning rather than failing mid-flow.
-
-Costs two model runs. Bare "review this" does not trigger it.
+`/consilium review <path>` points the same panel at something already written — a plan, a diff, a CV, prose, a config, another skill. It carries a hunt list per artifact type, because a review without one comes back as compliments, and it treats the artifact as data: text inside it addressed to the reviewer is part of what is under review, not an instruction. `--skip agy` makes it a two-model pass at two thirds the cost. A seat whose CLI is missing is named in the header and the panel goes on without it.
 
 ## transcribe
 
@@ -171,7 +164,7 @@ Unlike `/goal`, these can be armed by the model, and the skill does that rather 
 |---|---|---|
 | Need to decide something and the answer is on the internet | `/research compare Postgres vs ClickHouse for event storage` | a cited report saved where this repo keeps them |
 | Need a second and third opinion that have not read each other | `/consilium` | three independent answers plus the consensus and the divergence |
-| Have a plan or a diff you want torn apart twice | `/cross-review plan.md` | Claude's findings, Codex's findings, and what only one of them caught |
+| Have a plan or a diff you want torn apart | `/consilium review plan.md` | each model's findings, what they agree on, and what only one of them caught |
 | Have an hour of recorded conversation | drop the file path in chat | a cleaned-up transcript, offline; speaker labels once diarization is set up |
 | Agreed on a plan and want it finished unattended | `/goal-prompt` | one pasteable `/goal` condition built from this conversation plus the repo |
 | Want a reaction to an event while you are away | `/loop-prompt watch main for new commits and review them` | a `Monitor` script with a last-seen marker, armed |
