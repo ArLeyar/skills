@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Installs the "transcribe" skill into Codex and/or Claude Code.
 # Usage:  curl -fsSL https://raw.githubusercontent.com/ArLeyar/skills/main/skills/transcribe/install.sh | bash
-#    or:  ./install.sh          (from a checkout of this repo)
+#    or:  ./skills/transcribe/install.sh    (from a checkout of this repo)
 set -euo pipefail
 
 REPO_URL="https://github.com/ArLeyar/skills.git"
@@ -11,12 +11,14 @@ die() { printf '\033[1;31mError:\033[0m %s\n' "$1" >&2; exit 1; }
 
 # --- source: local checkout if SKILL.md is next to this script, else clone ---
 SRC=""
-if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "$(dirname "${BASH_SOURCE[0]}")/SKILL.md" ]; then
+# -f on BASH_SOURCE itself, not -n: piped through curl it reads "bash", whose dirname is ".",
+# and any directory that happens to hold a SKILL.md would then be mistaken for the source.
+if [ -f "${BASH_SOURCE[0]:-}" ] && [ -f "$(dirname "${BASH_SOURCE[0]}")/SKILL.md" ]; then
   SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 else
   command -v git >/dev/null || die "git is required. Install the Xcode Command Line Tools: xcode-select --install"
   CLONE="$(mktemp -d)/skills"
-  say "Downloading the skill..."
+  say "Downloading the skills repo..."
   git clone --depth 1 --quiet "$REPO_URL" "$CLONE"
   SRC="$CLONE/$SKILL_SUBDIR"
 fi
@@ -109,7 +111,7 @@ elif [ "$RAM_GB" -lt 12 ] && [ "${1:-}" != "--ru-model" ]; then
   # Conversion loads the full fp32 torch model (~6GB) and the fine-tune itself needs ~3GB
   # at runtime — both thrash swap on an 8GB machine. The quantized turbo is used instead.
   say "${RAM_GB}GB RAM: skipping the Russian fine-tune, the quantized turbo model will be used"
-  say "  (force it anyway with: ./install.sh --ru-model)"
+  say "  (force it anyway with: ./skills/transcribe/install.sh --ru-model)"
 elif [ "${1:-}" = "--ru-model" ]; then
   build_ru_model
 elif [ -r /dev/tty ]; then

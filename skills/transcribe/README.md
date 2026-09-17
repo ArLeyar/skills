@@ -28,7 +28,7 @@ curl -fsSL https://raw.githubusercontent.com/ArLeyar/skills/main/skills/transcri
 ```
 
 The installer detects Codex and/or Claude Code and drops the skill where each of them looks
-for it. Restart Codex afterwards.
+for it. Restart Codex or Claude Code afterwards.
 
 ## Usage
 
@@ -134,7 +134,7 @@ the agent runs the same install command for you.
 
 - `command not found: uv` — close and reopen your terminal, then run the installer again
 - `ffmpeg not found` — `brew install ffmpeg`
-- Codex doesn't see the skill — restart the app; check that `~/.codex/skills/transcribe` exists
+- The host doesn't see the skill — restart the app; check that `~/.codex/skills/transcribe` (Codex) or `~/.claude/skills/transcribe` (Claude Code) exists
 - Text loops on repeated words — ask to "re-run with the turbo model"
 
 ## Notes

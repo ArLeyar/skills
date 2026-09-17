@@ -165,7 +165,7 @@ transcribe.py [file ...] [-r SEC] [-e ENGINE] [-l LANG] [--only LANG] [-m MODEL]
   multilingual, downloaded from HuggingFace on first run).
 - Override either with `-m`.
 
-The optional Russian model is built locally — see "Optional: better Russian model" in README.md.
+The optional Russian model is built locally — see "Better Russian accuracy" in README.md, next to this file.
 
 ### Low-memory machines (8GB Macs)
 

@@ -16,15 +16,17 @@ Agent skills for **Claude Code** and **Codex**. One repo, one install, no plugin
 
 ```bash
 git clone https://github.com/ArLeyar/skills.git
+cd skills
 mkdir -p ~/.claude/skills ~/.codex/skills
-cp -r skills/skills/<name> ~/.claude/skills/     # Claude Code
-cp -r skills/skills/<name> ~/.codex/skills/      # Codex
+cp -r skills/<name> ~/.claude/skills/     # Claude Code
+cp -r skills/<name> ~/.codex/skills/      # Codex
 ```
 
 Symlinks work too, and keep one copy current in both hosts:
 
 ```bash
-ln -s "$PWD/skills/skills/<name>" ~/.claude/skills/<name>
+ln -s "$PWD/skills/<name>" ~/.claude/skills/<name>
+ln -s "$PWD/skills/<name>" ~/.codex/skills/<name>
 ```
 
 **`transcribe` is the exception — copying it by hand leaves it broken.** Its `SKILL.md` ships a `__SKILL_DIR__` placeholder that only the installer substitutes, and the installer also pulls ffmpeg, uv and the model:
