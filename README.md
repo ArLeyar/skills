@@ -87,6 +87,8 @@ Handles `.m4a`, `.mp3`, `.wav`, `.caf`, `.ogg`, `.flac`, and video too. Records 
 
 Speaker separation is a separate engine (`-e diarize`) and needs a free HuggingFace token plus accepted model terms; without the token it falls back to plain transcription rather than failing.
 
+Two cloud engines exist for the cases the local model handles badly — ElevenLabs Scribe (diarized, one request, no chunking) and OpenAI. Both stay off until you name one: holding an API key changes nothing on its own.
+
 Sending a bare path to an audio file is enough to trigger it — no command needed.
 
 ## stop-slop
