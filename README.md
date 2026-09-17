@@ -1,15 +1,93 @@
-# goal-prompt / loop-prompt
+# skills
 
-Two companion skills for Claude Code (and Codex) that turn the work you just discussed into something that runs while you are away.
+Agent skills for **Claude Code** and **Codex**. One repo, one install, no plugin machinery: each skill is a `SKILL.md` (plus whatever scripts it actually needs) that both hosts read the same way.
 
-They split on one question: **does the work finish?**
-
-| The work | Skill | Primitive |
+| Skill | What it does | Hosts |
 |---|---|---|
-| Ends at a checkable state — "tests pass", "migration done" | `goal-prompt` | `/goal` |
-| Never ends — watch CI, babysit a PR, react to new commits | `loop-prompt` | `Monitor`, `/loop`, `loop.md` |
+| [research](#research) | Web research with parallel search, source verification, and a saved report | Claude, Codex |
+| [consilium](#consilium) | The same brief to three models at once, answered blind, then synthesized | Claude, Codex |
+| [cross-review](#cross-review) | Claude and Codex review one artifact in parallel; the delta is the finding | Claude, Codex |
+| [transcribe](#transcribe) | Audio and video to text, locally on a Mac. Tuned for Russian with English tech jargon | Claude, Codex |
+| [stop-slop](#stop-slop) | Strip AI tells from prose (vendored from [hardikpandya/stop-slop](https://github.com/hardikpandya/stop-slop)) | Claude, Codex |
+| [goal-prompt](#goal-prompt) | Write a `/goal` condition for work that finishes | Claude, Codex |
+| [loop-prompt](#loop-prompt) | Set up a monitor or a `/loop` for work that does not | Claude |
 
-Each skill hands off to the other when the task turns out to be the other kind.
+## Install
+
+```bash
+git clone https://github.com/ArLeyar/skills.git
+mkdir -p ~/.claude/skills ~/.codex/skills
+cp -r skills/skills/<name> ~/.claude/skills/     # Claude Code
+cp -r skills/skills/<name> ~/.codex/skills/      # Codex
+```
+
+Symlinks work too, and keep one copy current in both hosts:
+
+```bash
+ln -s "$PWD/skills/skills/<name>" ~/.claude/skills/<name>
+```
+
+`transcribe` has its own installer, because it also pulls ffmpeg, uv and a local model:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ArLeyar/skills/main/skills/transcribe/install.sh | bash
+```
+
+Invoke any skill by name: `/research`, `/consilium`, `/cross-review`, `/goal-prompt`.
+
+---
+
+## research
+
+Web research that ends in a file someone can act on, not a wall of plausible text.
+
+```
+/research <topic>                       # 3-5 search angles
+/research deep <topic>                  # two rounds, gap-filling
+/research quick <topic>                 # answer in chat, no file
+/research compare <A> vs <B>            # option comparison
+```
+
+The pipeline runs frame → decompose → search → synthesize → persist. Two parts do most of the work:
+
+- **Framing.** Name the professional who gets paid to know this ("Shopify Solutions Architect", not "consultant"), and reframe the question in their vocabulary. Vocabulary decides which half of the internet answers.
+- **One extraction question per source.** "What does this page say?" returns noise. "What are the pricing tiers and what exactly differs between them?" returns the answer.
+
+Everything else enforces one rule: no source, no claim. Single-source claims get labelled as such, gaps get written down as gaps, and the Methodology section says what was searched and what was not — which is how a reader tells a thorough report from a thin one.
+
+It saves by the repo's own convention: `--save` first, then whatever `CLAUDE.md` or `AGENTS.md` documents, then `docs/research/`. It commits per the repo's rules and stops there — no push, no PR, no tracker issue unless the repo runs on one and you asked.
+
+## consilium
+
+One brief, three models, answered independently, then one synthesis.
+
+Claude, Codex and Gemini each get the same brief in an empty directory under an unguessable temp root, with no path to the others. Where all three agree you are probably right; where one dissents is the thing you had not considered.
+
+Two honest limits, both stated in the skill: isolation is arrangement rather than a sandbox, and agreement is not verification — three models share training data and share blind spots, so a unanimous panel is one opinion sampled three times until a decisive claim gets checked.
+
+Three tiers trade cost against depth, individual seats can be swapped or skipped by environment variable, and each seat's model and final state land in `panel.txt` after the run. It costs three model runs, so it fires only on explicit intent.
+
+## cross-review
+
+Two models review the same artifact in parallel, weighted differently, and the synthesis leads with where they disagree.
+
+Works on anything with a file: implementation plan, diff, CV, prose, design doc, config, another skill. Missing `codex` degrades to a Claude-only review with a warning rather than failing mid-flow.
+
+Costs two model runs. Bare "review this" does not trigger it.
+
+## transcribe
+
+Audio and video to text on an Apple Silicon Mac. Offline, free, nothing leaves the machine.
+
+Handles `.m4a`, `.mp3`, `.wav`, `.caf`, `.ogg`, `.flac`, and video too. Records from the microphone on request, separates speakers, splits hour-long recordings on silence, and cleans up Whisper's hallucination loops on silent stretches. Tuned for Russian speech with English tech jargon mixed in; any Whisper language works.
+
+Sending a bare path to an audio file is enough to trigger it — no command needed.
+
+## stop-slop
+
+Removes the predictable patterns that mark text as machine-written: throat-clearing openers, adverbs, binary contrasts, dramatic fragments, narrator-from-a-distance voice.
+
+Vendored from [hardikpandya/stop-slop](https://github.com/hardikpandya/stop-slop) (MIT, license kept alongside the skill), with one section added: the difference between slop and intentional rhetoric. Anaphora, antithesis and climax are craft; the skill kills the unconscious version and keeps the deliberate one.
 
 ## goal-prompt
 
@@ -61,41 +139,26 @@ Unlike `/goal`, these can be armed by the model, and the skill does that rather 
 - The prompt says what a tick with nothing to do looks like, or every quiet fire becomes an essay.
 - For a monitor, silence is not success: a filter matching only the happy path stays quiet through a crash, and quiet looks exactly like "still running".
 
+`loop-prompt` is Claude Code only; its primitives have no Codex equivalent.
+
+---
+
 ## Use cases
 
 | You just | Say | You get |
 |---|---|---|
-| Agreed on a plan or diagnosed failing tests, and want it finished unattended | `/goal-prompt` | one pasteable `/goal` condition built from this conversation plus the repo |
-| Have a task in mind, no prior discussion | `/goal-prompt migrate the payments module` | same, with the argument as the target |
-| Finished a goal run | `/goal-prompt review` | one question, one line in `~/.claude/goal-quality.jsonl` — whether the work was any good |
-| Accumulated a few runs | `/goal-prompt analyze` | failure patterns from the hosts' own history, and concrete edits to the skill when one hits three times |
-| Want a reaction to an event | `/loop-prompt watch main for new commits and review them` | a `Monitor` script with a last-seen marker, armed, with the reaction stated |
-| Want a repeated sweep with no event to hook | `/loop-prompt triage open PRs` | a `/loop` prompt that is idempotent, re-derives its state, and stays quiet on quiet ticks |
-| Want the same watch in every session of a repo | `/loop-prompt make this the repo default` | `.claude/loop.md`; a bare `/loop` then runs it |
+| Need to decide something and the answer is on the internet | `/research compare Postgres vs ClickHouse for event storage` | a cited report saved where this repo keeps them |
+| Need a second and third opinion that have not read each other | `/consilium` | three independent answers plus the consensus and the divergence |
+| Have a plan or a diff you want torn apart twice | `/cross-review plan.md` | Claude's findings, Codex's findings, and what only one of them caught |
+| Have an hour of recorded conversation | drop the file path in chat | a transcript with speakers separated |
+| Agreed on a plan and want it finished unattended | `/goal-prompt` | one pasteable `/goal` condition built from this conversation plus the repo |
+| Want a reaction to an event while you are away | `/loop-prompt watch main for new commits and review them` | a `Monitor` script with a last-seen marker, armed |
 
-Russian walkthrough of the same scenarios, with the usual failure modes: [USECASES.ru.md](USECASES.ru.md).
-
-## Install
-
-```bash
-git clone https://github.com/ArLeyar/goal-prompt.git
-mkdir -p ~/.claude/skills
-cp -r goal-prompt/skills/goal-prompt goal-prompt/skills/loop-prompt ~/.claude/skills/
-```
-
-Then invoke either one bare, right after discussing the work:
-
-```
-/goal-prompt
-/loop-prompt
-```
-
-Or with an explicit target: `/goal-prompt migrate the payments module`, `/loop-prompt watch main for new commits and review them`.
-
-Codex: point your skills/prompt directory at the same `SKILL.md`. `goal-prompt` writes one condition that satisfies both hosts — Claude's constraints are the stricter set. `loop-prompt` is Claude Code only; its primitives have no Codex equivalent.
+Russian walkthrough of the goal and loop scenarios, with the usual failure modes: [USECASES.ru.md](USECASES.ru.md).
 
 ## Docs
 
+- Claude Code skills: https://code.claude.com/docs/en/skills
 - Claude Code `/goal`: https://code.claude.com/docs/en/goal
 - Claude Code scheduled tasks and `/loop`: https://code.claude.com/docs/en/scheduled-tasks
 - Anthropic on loop design: https://claude.com/blog/getting-started-with-loops
@@ -103,4 +166,4 @@ Codex: point your skills/prompt directory at the same `SKILL.md`. `goal-prompt` 
 
 ## License
 
-MIT
+MIT, except `skills/stop-slop`, which carries its upstream MIT license and copyright.
