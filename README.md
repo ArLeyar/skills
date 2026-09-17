@@ -17,17 +17,24 @@ Agent skills for **Claude Code** and **Codex**. One repo, one install, no plugin
 ```bash
 git clone https://github.com/ArLeyar/skills.git
 cd skills
-mkdir -p ~/.claude/skills ~/.codex/skills
-cp -r skills/<name> ~/.claude/skills/     # Claude Code
-cp -r skills/<name> ~/.codex/skills/      # Codex
+
+skill=research                                 # or consilium, cross-review, stop-slop, …
+
+mkdir -p ~/.claude/skills ~/.agents/skills
+cp -R "skills/$skill" ~/.claude/skills/        # Claude Code
+cp -R "skills/$skill" ~/.agents/skills/        # Codex
 ```
+
+`~/.agents/skills` is the shared location Codex documents; older Codex installs read `~/.codex/skills`, and copying to both costs nothing if you are unsure which yours uses. If `CLAUDE_CONFIG_DIR` is set, Claude's half lives under that instead of `~/.claude`.
 
 Symlinks work too, and keep one copy current in both hosts:
 
 ```bash
-ln -s "$PWD/skills/<name>" ~/.claude/skills/<name>
-ln -s "$PWD/skills/<name>" ~/.codex/skills/<name>
+ln -s "$PWD/skills/$skill" ~/.claude/skills/"$skill"
+ln -s "$PWD/skills/$skill" ~/.agents/skills/"$skill"
 ```
+
+Invoking them differs by host: Claude Code takes `/research`, Codex takes `$research` or `/skills`. Both also trigger on plain requests that match the skill's description, which is how most of these get used.
 
 **`transcribe` is the exception — copying it by hand leaves it broken.** Its `SKILL.md` ships a `__SKILL_DIR__` placeholder that only the installer substitutes, and the installer also pulls ffmpeg, uv and the model:
 
@@ -35,9 +42,7 @@ ln -s "$PWD/skills/<name>" ~/.codex/skills/<name>
 curl -fsSL https://raw.githubusercontent.com/ArLeyar/skills/main/skills/transcribe/install.sh | bash
 ```
 
-It installs into every host it finds (`~/.codex/skills`, `~/.claude/skills`), and re-running it is how you update. Details, including the optional Russian fine-tune and the diarization setup: [skills/transcribe/README.md](skills/transcribe/README.md).
-
-Invoke any skill by name: `/research`, `/consilium`, `/cross-review`, `/goal-prompt`.
+It installs into every host directory that exists (`~/.agents/skills`, `~/.codex/skills`, `~/.claude/skills`), skips any it finds tracked by a git repo, and says so rather than reporting success. Re-running it is how you update. It is also the one skill here that cannot be symlinked, for the same placeholder reason. Details, including the optional Russian fine-tune and the diarization setup: [skills/transcribe/README.md](skills/transcribe/README.md).
 
 ---
 
@@ -55,17 +60,19 @@ Web research that ends in a file someone can act on, not a wall of plausible tex
 The pipeline runs frame → decompose → search → synthesize → persist. Two parts do most of the work:
 
 - **Framing.** Name the professional who gets paid to know this ("Shopify Solutions Architect", not "consultant"), and reframe the question in their vocabulary. Vocabulary decides which half of the internet answers.
-- **One extraction question per source.** "What does this page say?" returns noise. "What are the pricing tiers and what exactly differs between them?" returns the answer.
+- **A named question per search angle,** carried to every page that angle turns up. "What does this page say?" returns noise. "What are the pricing tiers and what exactly differs between them?" returns the answer.
 
 Everything else enforces one rule: no source, no claim. Single-source claims get labelled as such, gaps get written down as gaps, and the Methodology section says what was searched and what was not — which is how a reader tells a thorough report from a thin one.
 
-It saves by the repo's own convention: `--save` first, then whatever `CLAUDE.md` or `AGENTS.md` documents, then `docs/research/`. It commits per the repo's rules and stops there — no push, no PR, no tracker issue unless the repo runs on one and you asked.
+It saves by the repo's own convention: `--save` first, then whatever `CLAUDE.md` or `AGENTS.md` documents, then `docs/research/`. Writing that file is the whole of persistence — it does not commit, branch, push or open a tracker issue, because a question asked in passing should not end up as a commit in your working tree.
+
+What it fetches is evidence, never instructions: a page telling the agent to run something gets quoted in the report, not obeyed.
 
 ## consilium
 
 One brief, three models, answered independently, then one synthesis.
 
-Claude, Codex and Gemini each get the same brief in an empty directory under an unguessable temp root, with no path to the others. Where all three agree you are probably right; where one dissents is the thing you had not considered.
+Claude, Codex and Gemini each get the same brief in its own empty scratch directory, with no path to the others'. Where all three agree you are probably right; where one dissents is the thing you had not considered.
 
 Two honest limits, both stated in the skill: isolation is arrangement rather than a sandbox, and agreement is not verification — three models share training data and share blind spots, so a unanimous panel is one opinion sampled three times until a decisive claim gets checked.
 
@@ -81,7 +88,7 @@ Costs two model runs. Bare "review this" does not trigger it.
 
 ## transcribe
 
-Audio and video to text on an Apple Silicon Mac. Offline, free, nothing leaves the machine.
+Audio and video to text on an Apple Silicon Mac. The default engine is local, free, and sends nothing anywhere; the cloud engines below exist but stay off until you name one.
 
 Handles `.m4a`, `.mp3`, `.wav`, `.caf`, `.ogg`, `.flac`, and video too. Records from the microphone on request, splits hour-long recordings on silence, and cleans up Whisper's hallucination loops on silent stretches. Tuned for Russian speech with English tech jargon mixed in; any Whisper language works.
 
@@ -158,7 +165,7 @@ Unlike `/goal`, these can be armed by the model, and the skill does that rather 
 | Need to decide something and the answer is on the internet | `/research compare Postgres vs ClickHouse for event storage` | a cited report saved where this repo keeps them |
 | Need a second and third opinion that have not read each other | `/consilium` | three independent answers plus the consensus and the divergence |
 | Have a plan or a diff you want torn apart twice | `/cross-review plan.md` | Claude's findings, Codex's findings, and what only one of them caught |
-| Have an hour of recorded conversation | drop the file path in chat | a cleaned-up transcript, offline; ask for diarization and it labels who spoke |
+| Have an hour of recorded conversation | drop the file path in chat | a cleaned-up transcript, offline; speaker labels once diarization is set up |
 | Agreed on a plan and want it finished unattended | `/goal-prompt` | one pasteable `/goal` condition built from this conversation plus the repo |
 | Want a reaction to an event while you are away | `/loop-prompt watch main for new commits and review them` | a `Monitor` script with a last-seen marker, armed |
 
