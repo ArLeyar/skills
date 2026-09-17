@@ -62,7 +62,7 @@ Overrides:
 
 - `-m mlx-community/whisper-large-v3-turbo` — force the fp16 model for one run
 - `TRANSCRIBE_LOW_MEM=0` — turn the low-memory choice off entirely (`=1` forces it on)
-- `bash install.sh --ru-model` — build the Russian fine-tune anyway
+- `bash skills/transcribe/install.sh --ru-model` (from a checkout of the repo) — build the Russian fine-tune anyway
 
 Speaker diarization works on 8GB too (pyannote adds ~2GB on top of the model), just slower.
 Close the heavy apps first. If a long recording starts thrashing, transcribe without
@@ -81,10 +81,11 @@ better fine-tune, [antony66/whisper-large-v3-russian](https://huggingface.co/ant
 locally — a ~3GB download, no token needed, one time:
 
 ```bash
-bash install.sh --ru-model
+bash skills/transcribe/install.sh --ru-model   # from the root of a repo checkout
 ```
 
-Or by hand, if you don't have the repo checked out:
+Or by hand, if you don't have the repo checked out — from wherever the skill actually landed
+(`~/.codex/skills/transcribe` on Codex, `~/.claude/skills/transcribe` on Claude Code):
 
 ```bash
 uv run ~/.codex/skills/transcribe/scripts/convert.py \

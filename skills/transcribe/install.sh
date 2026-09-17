@@ -82,6 +82,8 @@ for DEST in "${TARGETS[@]}"; do
   cp "$SRC/scripts/transcribe.py" "$SRC/scripts/convert.py" "$DEST/scripts/"
   # SKILL.md ships with a placeholder because the install path differs per host
   sed "s|__SKILL_DIR__|$DEST|g" "$SRC/SKILL.md" > "$DEST/SKILL.md"
+  # SKILL.md points at the README for the optional extras, so it has to travel with it
+  [ -f "$SRC/README.md" ] && cp "$SRC/README.md" "$DEST/README.md"
 done
 
 # --- optional: build the Russian fine-tune (much better on Russian speech) ---
