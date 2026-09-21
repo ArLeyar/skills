@@ -12,6 +12,20 @@
 #         low    = sonnet / gpt-5.6-terra / gemini-3.8-flash-low
 # env:    CONSILIUM_SKIP="codex,agy" (or space-separated)   CONSILIUM_TIMEOUT=540 (seconds per seat, 60..570)
 #         CONSILIUM_CLAUDE_BUDGET=5 (USD)   CONSILIUM_{CLAUDE,CODEX,AGY}_MODEL override one seat of any tier
+#         CONSILIUM_PROFILE=default|<name>   which ACCOUNT the claude and codex seats log in as. The default is
+#           the ordinary one: plain claude, plain codex, nothing exported. <name> means
+#           CLAUDE_CONFIG_DIR=~/.claude-<name> and CODEX_HOME=~/.codex-<name> — the same thing an interactive
+#           claude-<name>/codex-<name> shell wrapper does, done by variable because such a wrapper is usually a
+#           shell function and a script cannot call one. Both directories must exist or the run is refused.
+#           Unset, the profile is read from the CALLER'S cwd: inside CONSILIUM_PROFILE_ROOT the seats run as
+#           CONSILIUM_PROFILE_NAME, anywhere else as the ordinary account. Neither has a built-in value, so a
+#           machine that sets neither always gets the ordinary account. agy has no profiles and is untouched.
+#           The chosen profile is recorded in panel.txt: a seat dying on "organization has disabled access" is
+#           an account fact, not a model one, and panel.txt is where that is visible.
+#         CONSILIUM_CONFIG=<path>   a shell fragment of per-machine defaults, sourced if it exists; the default
+#           path is ${XDG_CONFIG_HOME:-~/.config}/consilium.env. Plain KEY=value lines. It is where a personal
+#           directory-to-account mapping belongs — this script carries none, and neither should any repository.
+#           A variable already set in the environment wins over the same variable in that file.
 # isolation is arrangement, not a sandbox: every seat starts in its own empty dir under an unguessable temp root
 # outside <dir>, gets no path to the others, and is told there is nothing to look for. codex (read-only sandbox)
 # and agy (plan mode) can still read the filesystem if they go looking (measured 2026-09-16).
@@ -24,6 +38,40 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"
 [ $# -ge 1 ] || { echo "usage: run.sh <dir> [high|medium|low]" >&2; exit 2; }
 dir=$(cd -- "$1" 2>/dev/null && pwd -P) || { echo "no such dir: $1" >&2; exit 2; }
 tier=${2:-high}
+
+# Per-machine defaults, if the caller has a config file. Sourced BEFORE the profile is resolved, and an
+# environment variable that was already set is restored afterwards: the call wins over the file, always,
+# or a single run could not be forced onto the ordinary account.
+cfg=${CONSILIUM_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/consilium.env}
+if [ -f "$cfg" ]; then
+  preset=()
+  for v in CONSILIUM_PROFILE CONSILIUM_PROFILE_ROOT CONSILIUM_PROFILE_NAME; do
+    [ -n "${!v-}" ] && preset+=("$v=${!v}")
+  done
+  . "$cfg" || { echo "could not read $cfg" >&2; exit 2; }
+  if [ "${#preset[@]}" -gt 0 ]; then for kv in "${preset[@]}"; do export "$kv"; done; fi   # quoted: a path may hold spaces
+fi
+
+# Resolved from the CALLER'S cwd, so before the cd below and before anything is spent.
+here=$(pwd -P)
+profile=${CONSILIUM_PROFILE:-}
+if [ -z "$profile" ]; then
+  profile=default
+  proot=${CONSILIUM_PROFILE_ROOT:-}
+  if [ -n "$proot" ]; then
+    [ -n "${CONSILIUM_PROFILE_NAME:-}" ] || { echo "CONSILIUM_PROFILE_ROOT is set without CONSILIUM_PROFILE_NAME" >&2; exit 2; }
+    proot=$(cd -- "$proot" 2>/dev/null && pwd -P) || { echo "CONSILIUM_PROFILE_ROOT does not exist: ${CONSILIUM_PROFILE_ROOT}" >&2; exit 2; }
+    case "$here/" in "$proot"/*) profile=$CONSILIUM_PROFILE_NAME ;; esac
+  fi
+fi
+case "$profile" in
+  default) ;;
+  *[!A-Za-z0-9._-]*|'') echo "CONSILIUM_PROFILE must be 'default' or a plain name (letters, digits, . _ -)" >&2; exit 2 ;;
+  *) for d in "$HOME/.claude-$profile" "$HOME/.codex-$profile"; do
+       [ -d "$d" ] || { echo "profile $profile: $d does not exist" >&2; exit 2; }
+     done ;;
+esac
+
 cd "$dir" || exit 2
 [ -s brief.md ] || { echo "no brief at $dir/brief.md" >&2; exit 2; }
 mkdir status.d 2>/dev/null || { echo "$dir already holds a run; use a fresh dir" >&2; exit 2; }   # atomic claim, kept after the run
@@ -71,12 +119,21 @@ json.dump({"event":"user","message":{"role":"user","content":c}},sys.stdout); sy
       || { echo "could not build agy's stream-json message" >&2; rm -rf "$wdroot"; exit 2; }
   fi ;;
 esac
-echo "tier=$tier timeout=${limit}s" > panel.txt
+echo "tier=$tier timeout=${limit}s profile=$profile" > panel.txt
 
 pids=(); started=()
 cleanup() { trap - INT TERM HUP EXIT; [ ${#pids[@]} -gt 0 ] && kill "${pids[@]}" 2>/dev/null; rm -rf "$wdroot"; }
 trap 'cleanup; exit 130' INT TERM HUP
 trap cleanup EXIT   # a runner that dies takes its seats with it, or they keep billing
+
+seat_account() { # log this seat in as the chosen profile; agy has none. Runs inside the seat's own subshell.
+  [ "$profile" = default ] && return 0
+  case $1 in
+    claude) export CLAUDE_CONFIG_DIR="$HOME/.claude-$profile" ;;
+    codex)  export CODEX_HOME="$HOME/.codex-$profile" ;;
+  esac
+  return 0
+}
 
 run() { # run <seat> <stdout-file> <stdin-file> <cmd...>
   local seat=$1 out=$2 in=$3; shift 3
@@ -84,7 +141,7 @@ run() { # run <seat> <stdout-file> <stdin-file> <cmd...>
   command -v "$1" >/dev/null || { echo "missing:$1" > "status.d/$seat"; return; }
   mkdir "$wdroot/$seat" || { echo "exit:mkdir" > "status.d/$seat"; return; }
   # exec makes the job's pid the timeout's pid, so cleanup's kill reaches the seat through timeout's forwarding
-  ( cd "$wdroot/$seat" && exec "$TO" -k 30 "$limit" "$@" ) > "$dir/$out" 2> "$dir/$seat.err" < "$in" &
+  ( cd "$wdroot/$seat" && seat_account "$seat" && exec "$TO" -k 30 "$limit" "$@" ) > "$dir/$out" 2> "$dir/$seat.err" < "$in" &
   pids+=("$!"); started+=("$seat")
 }
 

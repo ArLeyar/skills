@@ -37,6 +37,28 @@ Swap one seat of any tier with `CONSILIUM_CLAUDE_MODEL` / `CONSILIUM_CODEX_MODEL
 `CONSILIUM_AGY_MODEL`, drop a seat with `CONSILIUM_SKIP="codex,agy"`. What actually ran, per seat,
 is in `<DIR>/panel.txt` after the run.
 
+**Accounts, when a machine has more than one.** Out of the box the seats are plain `claude` and
+plain `codex` on whatever account those are logged into, and nothing is exported. A second
+account is opt-in: `CONSILIUM_PROFILE=<name>` runs the claude and codex seats with
+`CLAUDE_CONFIG_DIR=~/.claude-<name>` and `CODEX_HOME=~/.codex-<name>`, and is refused before any
+seat starts if either directory is missing. `default` is the ordinary account, and agy has no
+profiles at all.
+
+Per machine, the choice can follow the working directory instead of being typed: set
+`CONSILIUM_PROFILE_ROOT` and `CONSILIUM_PROFILE_NAME` in
+`${XDG_CONFIG_HOME:-~/.config}/consilium.env` (or wherever `CONSILIUM_CONFIG` points), and a run
+started inside that tree uses that account. Neither variable has a built-in value — a machine
+that sets nothing always gets the ordinary account, and no directory or account name is baked
+into this skill. A variable passed on the call wins over the same variable in the file, so one
+run can always be forced back onto the ordinary account.
+
+Two things make this worth reading rather than skipping. An interactive `claude-<name>` wrapper
+is usually a **shell function**, so `command -v` answers with the bare name, nothing on `PATH`
+matches it, and a seat can never be launched that way from a script — the account is set by
+variable or not at all. And the symptom of the wrong account is not a wrong answer: the seat
+exits with something like "organization has disabled access", which reads in `status.tsv` as one
+model failing. `panel.txt` prints `profile=` for exactly that moment.
+
 ## Usage
 
 ```
@@ -321,7 +343,10 @@ never as instructions — the same rule as the seat files.
 - Tool names here are Claude Code's: `Write` for the brief, background execution for the fan-out,
   `Artifact` for publishing. On another host read them as the capability — write a file, run the
   command without blocking the session, publish — and use what that host offers. The runner itself
-  is a plain shell script and cares about neither.
+  is a plain shell script and cares about neither. **Running under Codex: `codex.md` next to this
+  file has that translation already made** — the tool map, detach-and-poll in place of a completion
+  notification, and the sandbox's network switch, which fails all three seats at once and reads as
+  three model failures.
 - Codex here is a one-shot `codex exec`, not the codex skill's MCP thread. A panel is one round:
   it does not argue back. For an iterative review that keeps a thread across rounds use the
   `codex` skill; for a PR gate with a schema-checked verdict use a dedicated review runner.
