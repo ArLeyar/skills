@@ -21,7 +21,7 @@ Panel and how each is reached (measured 2026-09-16; transport lessons taken from
 
 | Seat | Model | Path | Reach |
 |------|-------|------|-------|
-| claude | Claude Fable (`--model fable`) | `claude -p`, brief on stdin | web search/fetch only; no file tools, no hooks, no user settings, no MCP, no skills, no saved transcript, spend capped (`CONSILIUM_CLAUDE_BUDGET`, default 5 USD) |
+| claude | Claude Opus 5.5 (`--model claude-opus-5-5`, `--effort high`; medium tier `--effort medium`) | `claude -p`, brief on stdin | web search/fetch only; no file tools, no hooks, no user settings, no MCP, no skills, no saved transcript, spend capped (`CONSILIUM_CLAUDE_BUDGET`, default 5 USD) |
 | codex | GPT-6 Astra (`gpt-6-astra`) | `codex exec -s read-only --ephemeral`, brief on stdin | shell without network or writes; user config and rules ignored, effort high set explicitly |
 | agy | Gemini 3.8 Flash (`gemini-3.8-flash-high`) | `agy --print='' --input-format stream-json --mode plan`, brief as one NDJSON line on stdin | read-only plan mode; briefs over 165 KB are refused for this seat (above that agy delivers part of the prompt and reports success) |
 
@@ -29,12 +29,12 @@ Tiers, second argument of `run.sh` (default `high`):
 
 | Tier | claude | codex | agy | When |
 |------|--------|-------|-----|------|
-| high | fable | gpt-6-astra | gemini-3.8-flash-high | default: decisions, research, anything that ships |
-| medium | opus | gpt-5.6-sol | gemini-3.8-flash-high | routine review, a second round, cost matters |
+| high | opus 5.5, effort high | gpt-6-astra | gemini-3.8-flash-high | default: decisions, research, anything that ships |
+| medium | opus 5.5, effort medium | gpt-5.6-sol | gemini-3.8-flash-high | routine review, a second round, cost matters |
 | low | sonnet | gpt-5.6-terra | gemini-3.8-flash-low | smoke-testing a brief; rarely worth a panel |
 
 Swap one seat of any tier with `CONSILIUM_CLAUDE_MODEL` / `CONSILIUM_CODEX_MODEL` /
-`CONSILIUM_AGY_MODEL`, drop a seat with `CONSILIUM_SKIP="codex,agy"`. What actually ran, per seat,
+`CONSILIUM_AGY_MODEL` (claude seat effort: `CONSILIUM_CLAUDE_EFFORT`), drop a seat with `CONSILIUM_SKIP="codex,agy"`. What actually ran, per seat,
 is in `<DIR>/panel.txt` after the run.
 
 **Accounts, when a machine has more than one.** Out of the box the seats are plain `claude` and
@@ -64,7 +64,7 @@ model failing. `panel.txt` prints `profile=` for exactly that moment.
 ```
 /consilium <question or task>              # high tier, panel + synthesis in chat
 /consilium review <path|artifact>          # review mode, medium tier by default
-/consilium <task> --tier medium            # opus / gpt-5.6-sol / gemini flash high
+/consilium <task> --tier medium            # opus 5.5 effort medium / gpt-5.6-sol / gemini flash high
 /consilium <task> --raw                    # also show each seat's answer in chat
 /consilium <task> --save <path>            # also write synthesis + raw answers to <path>
 /consilium <task> --artifact               # also publish the report as an Artifact

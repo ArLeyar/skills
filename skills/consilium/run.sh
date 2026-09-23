@@ -7,11 +7,12 @@
 #          <dir>/status.tsv  seat<TAB>state   state = ok | no-position | timeout | exit:<n> | no-result | skipped | missing:<cmd> | brief-too-large
 #          <dir>/panel.txt   tier, deadline, and per seat the model and its final state (written after the run)
 #   exit   0 = at least one usable answer, 1 = seats ran and none is usable, 2 = refused before any paid call
-# tiers:  high   = fable  / gpt-6-astra / gemini-3.8-flash-high
-#         medium = opus   / gpt-5.6-sol / gemini-3.8-flash-high
-#         low    = sonnet / gpt-5.6-terra / gemini-3.8-flash-low
+# tiers:  high   = claude-opus-5-5 effort high   / gpt-6-astra / gemini-3.8-flash-high
+#         medium = claude-opus-5-5 effort medium / gpt-5.6-sol / gemini-3.8-flash-high
+#         low    = sonnet                        / gpt-5.6-terra / gemini-3.8-flash-low
 # env:    CONSILIUM_SKIP="codex,agy" (or space-separated)   CONSILIUM_TIMEOUT=540 (seconds per seat, 60..570)
 #         CONSILIUM_CLAUDE_BUDGET=5 (USD)   CONSILIUM_{CLAUDE,CODEX,AGY}_MODEL override one seat of any tier
+#         CONSILIUM_CLAUDE_EFFORT=low|medium|high|xhigh|max   override the claude seat's effort (empty = CLI default)
 #         CONSILIUM_PROFILE=default|<name>   which ACCOUNT the claude and codex seats log in as. The default is
 #           the ordinary one: plain claude, plain codex, nothing exported. <name> means
 #           CLAUDE_CONFIG_DIR=~/.claude-<name> and CODEX_HOME=~/.codex-<name> — the same thing an interactive
@@ -81,12 +82,14 @@ TO=$(command -v timeout || command -v gtimeout) || { echo "GNU timeout missing (
 command -v python3 >/dev/null || { echo "python3 missing; needed to build and read agy's stream-json" >&2; exit 2; }
 
 case "$tier" in
-  high)   claude_m=fable;  codex_m=gpt-6-astra; agy_m=gemini-3.8-flash-high ;;
-  medium) claude_m=opus;   codex_m=gpt-5.6-sol; agy_m=gemini-3.8-flash-high ;;
-  low)    claude_m=sonnet; codex_m=gpt-5.6-terra; agy_m=gemini-3.8-flash-low ;;
+  high)   claude_m=claude-opus-5-5; claude_e=high;   codex_m=gpt-6-astra; agy_m=gemini-3.8-flash-high ;;
+  medium) claude_m=claude-opus-5-5; claude_e=medium; codex_m=gpt-5.6-sol; agy_m=gemini-3.8-flash-high ;;
+  low)    claude_m=sonnet;          claude_e=;       codex_m=gpt-5.6-terra; agy_m=gemini-3.8-flash-low ;;
   *) echo "unknown tier: $tier (high|medium|low)" >&2; exit 2 ;;
 esac
 claude_m=${CONSILIUM_CLAUDE_MODEL:-$claude_m}
+claude_e=${CONSILIUM_CLAUDE_EFFORT-$claude_e}
+case "$claude_e" in ''|low|medium|high|xhigh|max) ;; *) echo "CONSILIUM_CLAUDE_EFFORT must be low|medium|high|xhigh|max" >&2; exit 2 ;; esac
 codex_m=${CONSILIUM_CODEX_MODEL:-$codex_m}
 agy_m=${CONSILIUM_AGY_MODEL:-$agy_m}
 
@@ -146,7 +149,7 @@ run() { # run <seat> <stdout-file> <stdin-file> <cmd...>
 }
 
 # claude: prompt on stdin; no hooks, no user settings, no MCP, no skills, no file tools, no transcript, capped spend
-run claude claude.md brief.md claude -p --model "$claude_m" --permission-mode dontAsk --permission-prompts none \
+run claude claude.md brief.md claude -p --model "$claude_m" ${claude_e:+--effort "$claude_e"} --permission-mode dontAsk --permission-prompts none \
   --tools "WebSearch,WebFetch" --setting-sources "" --strict-mcp-config --disable-slash-commands \
   --no-session-persistence --max-budget-usd "$budget"
 # codex: prompt on stdin via "-"; no user config or rules, effort set here since the config is ignored;
@@ -185,7 +188,7 @@ pids=()
 
 for s in claude codex agy; do printf '%s\t%s\n' "$s" "$(cat "status.d/$s")"; done > status.tsv
 for s in claude codex agy; do
-  case "$s" in claude) m=$claude_m ;; codex) m=$codex_m ;; agy) m=$agy_m ;; esac
+  case "$s" in claude) m=$claude_m${claude_e:+/effort=$claude_e} ;; codex) m=$codex_m ;; agy) m=$agy_m ;; esac
   printf '%s=%s %s\n' "$s" "$m" "$(cat "status.d/$s")"
 done >> panel.txt
 cat panel.txt
