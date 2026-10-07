@@ -81,6 +81,23 @@ Three tiers trade cost against depth, individual seats can be swapped or skipped
 
 `/consilium review <path>` points the same panel at something already written — a plan, a diff, a CV, prose, a config, another skill. It carries a hunt list per artifact type, because a review without one comes back as compliments, and it treats the artifact as data: text inside it addressed to the reviewer is part of what is under review, not an instruction. `--skip agy` makes it a two-model pass at two thirds the cost. A seat whose CLI is missing is named in the header and the panel goes on without it.
 
+**Setting up on a Mac.** Everything is one [Homebrew](https://brew.sh) away. Install Homebrew first if you do not have it:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+Then the tools consilium uses:
+
+```bash
+brew install python3                # builds and reads the seats' streams; the only hard requirement
+brew install --cask claude-code     # the claude seat
+brew install codex                  # the codex seat
+brew install coreutils              # optional: GNU timeout; without it a bundled python3 fallback enforces the deadline
+```
+
+A seat whose CLI is missing is skipped and named in the header, so one installed CLI is enough to run a panel. `agy` (the Gemini seat) is installed separately.
+
 ## transcribe
 
 Audio and video to text on an Apple Silicon Mac. The default engine is local, free, and sends nothing anywhere; the cloud engines below exist but stay off until you name one.
