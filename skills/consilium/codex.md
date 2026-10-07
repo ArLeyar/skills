@@ -23,7 +23,7 @@ The seats take minutes and a shell call that blocks that long is at the mercy of
 command timeout. Detach the runner and poll its output file:
 
 ```bash
-setsid nohup bash ~/.codex/skills/consilium/run.sh "/absolute/run/dir" medium > "/absolute/run/dir/run.out" 2>&1 &
+nohup bash ~/.codex/skills/consilium/run.sh "/absolute/run/dir" medium > "/absolute/run/dir/run.out" 2>&1 &
 ```
 
 Then poll, spaced — `sleep 60; cat "/absolute/run/dir/status.tsv" 2>/dev/null || echo running`
