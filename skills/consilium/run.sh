@@ -73,13 +73,15 @@ case "$profile" in
      done ;;
 esac
 
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)   # before the cd: $0 may be relative
 cd "$dir" || exit 2
 [ -s brief.md ] || { echo "no brief at $dir/brief.md" >&2; exit 2; }
 mkdir status.d 2>/dev/null || { echo "$dir already holds a run; use a fresh dir" >&2; exit 2; }   # atomic claim, kept after the run
 trap 'rm -rf status.d' EXIT   # a refusal before launch leaves no run marker; replaced by cleanup once seats start
-TO=$(command -v timeout || command -v gtimeout) || { echo "GNU timeout missing (brew install coreutils gives gtimeout); no paid seat starts without a deadline" >&2; exit 2; }
-"$TO" --version 2>/dev/null | grep -q GNU || { echo "$TO is not GNU timeout; brew install coreutils" >&2; exit 2; }
 command -v python3 >/dev/null || { echo "python3 missing; needed to build and read agy's stream-json" >&2; exit 2; }
+# GNU timeout when present; stock macOS has none, so python3 (required anyway) stands in with the same exit codes
+T=$(command -v timeout || command -v gtimeout)
+if [ -n "$T" ] && "$T" --version 2>/dev/null | grep -q GNU; then TO=("$T"); else TO=(python3 "$here/deadline.py"); fi
 
 case "$tier" in
   high)   claude_m=claude-opus-5-5; claude_e=high;   codex_m=gpt-6-astra; agy_m=gemini-3.8-flash-high ;;
@@ -144,7 +146,7 @@ run() { # run <seat> <stdout-file> <stdin-file> <cmd...>
   command -v "$1" >/dev/null || { echo "missing:$1" > "status.d/$seat"; return; }
   mkdir "$wdroot/$seat" || { echo "exit:mkdir" > "status.d/$seat"; return; }
   # exec makes the job's pid the timeout's pid, so cleanup's kill reaches the seat through timeout's forwarding
-  ( cd "$wdroot/$seat" && seat_account "$seat" && exec "$TO" -k 30 "$limit" "$@" ) > "$dir/$out" 2> "$dir/$seat.err" < "$in" &
+  ( cd "$wdroot/$seat" && seat_account "$seat" && exec "${TO[@]}" -k 30 "$limit" "$@" ) > "$dir/$out" 2> "$dir/$seat.err" < "$in" &
   pids+=("$!"); started+=("$seat")
 }
 
@@ -158,7 +160,7 @@ run codex codex.log brief.md codex exec --skip-git-repo-check --ephemeral --igno
   -C "$wdroot/codex" -s read-only --color never -m "$codex_m" -c 'model_reasoning_effort="high"' -o "$dir/codex.md" -
 # agy: the NDJSON message built above on stdin; --print='' MUST stay attached (as two words --print eats the next
 # flag as its prompt); output is the NDJSON stream, parsed after the run. --print-timeout sits ABOVE the deadline
-# so GNU timeout is the only authority. --disable-slash-commands is deliberately absent: it switches --mode plan off.
+# so the deadline wrapper is the only authority. --disable-slash-commands is deliberately absent: it switches --mode plan off.
 if [ -n "$agy_state" ]; then echo "$agy_state" > status.d/agy
 else
   run agy agy.log "$wdroot/agy.ndjson" agy --print='' --input-format stream-json --output-format stream-json \

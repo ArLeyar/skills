@@ -3,7 +3,7 @@ name: consilium
 description: Panel of top models on one task, in parallel and blind to each other — Claude (claude -p), GPT (codex exec), Gemini (agy) — then one synthesis with consensus, divergence and conflicts. Two jobs. RESEARCH — each seat answers one question alone and the caller aggregates; also a design decision or "what would you do". REVIEW — the same artifact goes to every seat and the synthesis leads with where they disagree, which is the blind spot; works on a plan, a diff, a CV, prose, a config, another skill. Costs one model run per seat, so trigger only on explicit intent — "/consilium", "консилиум", "собери консилиум", "спроси все модели", "спроси топ-модели", "panel of models", "ask all three", "cross-review", "second opinion with Claude and Codex", "прогони через codex и клода". Do NOT auto-trigger on a bare "research" or "review this" — research has its own skill, and an ordinary review is one reviewer.
 allowed-tools: Read Write Skill Artifact WebSearch WebFetch Bash(bash:*) Bash(mktemp:*) Bash(cat:*) Bash(ls:*) Bash(tail:*) Bash(wc:*)
 license: MIT
-compatibility: Needs python3, GNU timeout (coreutils on macOS) and at least one seat CLI on PATH — claude, codex or agy. A missing seat is reported and skipped, not fatal.
+compatibility: Needs python3 and at least one seat CLI on PATH — claude, codex or agy. A missing seat is reported and skipped, not fatal.
 ---
 
 # Consilium
@@ -245,13 +245,13 @@ omitting the assignment entirely, not naming it. Seats are `claude`, `codex`, `a
 `high`, `medium`, `low` — anything else is a typo, not a value to pass through.
 
 `run_in_background: true`, always — the seats take minutes. Do not poll; the completion
-notification is the signal. The per-seat deadline (`CONSILIUM_TIMEOUT`, default 540 s, GNU
-`timeout` enforced, refused above 570) is the guarantee that the runner returns and `status.tsv`
+notification is the signal. The per-seat deadline (`CONSILIUM_TIMEOUT`, default 540 s, enforced by GNU
+`timeout` or, where it is absent, by `deadline.py`; refused above 570) is the guarantee that the runner returns and `status.tsv`
 is complete; it does not depend on any tool cap. Never reproduce the seat commands inline: the
 script carries the flag quirks that already bit.
 
 Runner exit: 0 at least one usable answer; 1 seats ran and none is usable; 2 refused before any
-paid call (bad or reused dir, no GNU `timeout`/`gtimeout`, no python3, bad tier, timeout or
+paid call (bad or reused dir, no python3, bad tier, timeout or
 budget value, unknown or all-skipped seats, agy message could not be built) — on 2 read its
 stderr and fix the call; nothing was spent. The dir itself is reusable for every reason except
 "already holds a run" — that one is answered by a fresh dir, never by retrying the same one. After a run the dir keeps its
