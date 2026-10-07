@@ -13,10 +13,13 @@ def stop(sig):
 def on_signal(n, _f):   # runner's cleanup kill lands here; it starts the same KILL clock a deadline does
     global term_at, got
     got = got or n
-    if child and term_at is None: term_at = time.monotonic(); stop(n)
+    if child:
+        if term_at is None: term_at = time.monotonic()   # the KILL clock starts once; every signal is still forwarded
+        stop(n)
 
 for s in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP, signal.SIGQUIT):
-    signal.signal(s, on_signal)   # before the spawn: a signal in between would strand the child with no deadline
+    if signal.getsignal(s) != signal.SIG_IGN:   # keep an inherited ignore, as `nohup` sets for HUP
+        signal.signal(s, on_signal)   # before the spawn: a signal in between would strand the child with no deadline
 
 child = subprocess.Popen(cmd, start_new_session=True)
 if got and term_at is None: term_at = time.monotonic(); stop(got)

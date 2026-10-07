@@ -87,7 +87,7 @@ Three tiers trade cost against depth, individual seats can be swapped or skipped
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-The installer ends by printing two `eval "$(.../brew shellenv)"` lines under "Next steps". Run them (or open a new terminal) before the next block, or `brew` is not found.
+The installer ends with a "Next steps" block of two commands (one writes `brew shellenv` into your shell profile, one loads it now). Run both, or `brew` is not found in the next block.
 
 Then the tools consilium uses:
 
