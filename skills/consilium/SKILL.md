@@ -37,6 +37,11 @@ Swap one seat of any tier with `CONSILIUM_CLAUDE_MODEL` / `CONSILIUM_CODEX_MODEL
 `CONSILIUM_AGY_MODEL` (claude seat effort: `CONSILIUM_CLAUDE_EFFORT`), drop a seat with `CONSILIUM_SKIP="codex,agy"`. What actually ran, per seat,
 is in `<DIR>/panel.txt` after the run.
 
+Gemini 4 Argon (released 2026-10-13) reaches the agy CLI only on a Google AI Ultra plan. On
+2026-10-15 this account was on agy 1.3.5, the latest version: `agy models` did not list Argon,
+and `--model gemini-4-argon` was rejected. Before swapping the agy seat, run `agy update` and then
+`agy models`. Only an id that `agy models` prints is valid here.
+
 **Accounts, when a machine has more than one.** Out of the box the seats are plain `claude` and
 plain `codex` on whatever account those are logged into, and nothing is exported. A second
 account is opt-in: `CONSILIUM_PROFILE=<name>` runs the claude and codex seats with
@@ -215,7 +220,10 @@ the context has ended. Answer in full structured Markdown.
 ```
 
 `## Position` and `## Confidence` are the headings the runner checks for; keep both, as plain
-headings on their own lines. Reviewing something already written → the three brief changes are in
+headings on their own lines. When you ask for the answer in another language, also say in `# Rules`
+that the section headings stay in English, exactly as written. In the 2026-10-15 run, a brief that
+said "answer in Russian" got back `## Позиция` from the claude seat, and the runner marked a full
+answer `no-position`. Reviewing something already written → the three brief changes are in
 **Mode: review** above, and the rest of this flow is unchanged.
 
 Before fanning out, write your own one-line position into `<DIR>/self.md`. Writing a prior down

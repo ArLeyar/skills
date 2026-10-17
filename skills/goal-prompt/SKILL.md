@@ -291,6 +291,10 @@ Any condition touching deploys, releases, force-push, schema or data migrations,
 | `git stash` in a multi-worktree run | classifier blocks it, and one shared `.git` means agents pop each other's WIP | set work aside via a WIP commit on the branch |
 | retry a blocked command / find a synonym | each attempt extends the block streak until every command is gated | one block = stop that line, report; 2+ blocks on an agent = replace the agent |
 | three goals joined by "and" | evaluator flips on partial work | pick one, queue the rest |
+| "a review panel returns no blocker/high" as the end state | every round finds new highs and every fix needs another round: 9 consilium rounds in one run, never met | review is one bounded step (N rounds, each high fixed or closed in one line); the end state is the checks, not the panel's silence |
+| proof that is a Read of an image, or quoted lines the evaluator must match by eye | the evaluator keeps asking for "Read after the last build" on files already shown; the run loops on paperwork | prove with one command that prints everything at once (paths, counts, mtimes against the build time); keep visual review out of `Done when` |
+| an end state that needs a human click (confirm dialog, publish) or a business choice nobody made | the run can only stop and ask, and the hook re-asks every turn | ask the choice before emitting; leave human-click steps out of the goal |
+| scratch `goal.txt` in a folder another session also uses | two sessions overwrote each other's condition file | measure in a session-unique file, `goal-<topic>.txt` |
 
 ## Reference
 
