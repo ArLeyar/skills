@@ -8,8 +8,8 @@
 #          <dir>/panel.txt   tier, deadline, and per seat the model and its final state (written after the run)
 #   exit   0 = at least one usable answer, 1 = seats ran and none is usable, 2 = refused before any paid call
 # tiers:  high   = claude-opus-5-5 effort high   / gpt-6-astra / gemini-3.8-flash-high
-#         medium = claude-opus-5-5 effort medium / gpt-5.6-sol / gemini-3.8-flash-high
-#         low    = sonnet                        / gpt-5.6-terra / gemini-3.8-flash-low
+#         medium = claude-opus-5-5 effort medium / gpt-6.1-sol / gemini-3.8-flash-high
+#         low    = sonnet                        / gpt-6-luna / gemini-3.8-flash-low
 # env:    CONSILIUM_SKIP="codex,agy" (or space-separated)   CONSILIUM_TIMEOUT=540 (seconds per seat, 60..570)
 #         CONSILIUM_CLAUDE_BUDGET=5 (USD)   CONSILIUM_{CLAUDE,CODEX,AGY}_MODEL override one seat of any tier
 #         CONSILIUM_CLAUDE_EFFORT=low|medium|high|xhigh|max   override the claude seat's effort (empty = CLI default)
@@ -85,8 +85,8 @@ if [ -n "$T" ] && "$T" --version 2>/dev/null | grep -q GNU; then TO=("$T"); else
 
 case "$tier" in
   high)   claude_m=claude-opus-5-5; claude_e=high;   codex_m=gpt-6-astra; agy_m=gemini-3.8-flash-high ;;
-  medium) claude_m=claude-opus-5-5; claude_e=medium; codex_m=gpt-5.6-sol; agy_m=gemini-3.8-flash-high ;;
-  low)    claude_m=sonnet;          claude_e=;       codex_m=gpt-5.6-terra; agy_m=gemini-3.8-flash-low ;;
+  medium) claude_m=claude-opus-5-5; claude_e=medium; codex_m=gpt-6.1-sol; agy_m=gemini-3.8-flash-high ;;
+  low)    claude_m=sonnet;          claude_e=;       codex_m=gpt-6-luna; agy_m=gemini-3.8-flash-low ;;
   *) echo "unknown tier: $tier (high|medium|low)" >&2; exit 2 ;;
 esac
 claude_m=${CONSILIUM_CLAUDE_MODEL:-$claude_m}

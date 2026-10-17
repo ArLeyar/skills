@@ -30,8 +30,8 @@ Tiers, second argument of `run.sh` (default `high`):
 | Tier | claude | codex | agy | When |
 |------|--------|-------|-----|------|
 | high | opus 5.5, effort high | gpt-6-astra | gemini-3.8-flash-high | default: decisions, research, anything that ships |
-| medium | opus 5.5, effort medium | gpt-5.6-sol | gemini-3.8-flash-high | routine review, a second round, cost matters |
-| low | sonnet | gpt-5.6-terra | gemini-3.8-flash-low | smoke-testing a brief; rarely worth a panel |
+| medium | opus 5.5, effort medium | gpt-6.1-sol | gemini-3.8-flash-high | routine review, a second round, cost matters |
+| low | sonnet | gpt-6-luna | gemini-3.8-flash-low | smoke-testing a brief; rarely worth a panel |
 
 Swap one seat of any tier with `CONSILIUM_CLAUDE_MODEL` / `CONSILIUM_CODEX_MODEL` /
 `CONSILIUM_AGY_MODEL` (claude seat effort: `CONSILIUM_CLAUDE_EFFORT`), drop a seat with `CONSILIUM_SKIP="codex,agy"`. What actually ran, per seat,
@@ -69,7 +69,7 @@ model failing. `panel.txt` prints `profile=` for exactly that moment.
 ```
 /consilium <question or task>              # high tier, panel + synthesis in chat
 /consilium review <path|artifact>          # review mode, medium tier by default
-/consilium <task> --tier medium            # opus 5.5 effort medium / gpt-5.6-sol / gemini flash high
+/consilium <task> --tier medium            # opus 5.5 effort medium / gpt-6.1-sol / gemini flash high
 /consilium <task> --raw                    # also show each seat's answer in chat
 /consilium <task> --save <path>            # also write synthesis + raw answers to <path>
 /consilium <task> --artifact               # also publish the report as an Artifact
