@@ -86,6 +86,16 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)   # before the cd: $0 may be 
 if [ -n "$read_dir" ]; then   # a seat reading the tree must not find the brief or the other answers
   case "$dir/" in "$read_dir"/*) echo "run dir $dir is inside CONSILIUM_READ; use a run dir outside it" >&2; exit 2 ;; esac
   case "$read_dir/" in "$dir"/*) echo "CONSILIUM_READ is inside the run dir $dir" >&2; exit 2 ;; esac
+  # a symlink in the tree can reach the run dir even when the two paths do not overlap
+  python3 -c 'import os,sys
+root,run=sys.argv[1],os.path.realpath(sys.argv[2])
+for d,dirs,files in os.walk(root):
+  for n in dirs+files:
+    p=os.path.join(d,n)
+    if os.path.islink(p):
+      t=os.path.realpath(p)
+      if t==run or t.startswith(run+os.sep) or run.startswith(t+os.sep): print(p); sys.exit(1)' "$read_dir" "$dir" \
+    || { echo "a symlink in CONSILIUM_READ resolves into the run dir (above); remove it or read a copy" >&2; exit 2; }
 fi
 cd "$dir" || exit 2
 [ -s brief.md ] || { echo "no brief at $dir/brief.md" >&2; exit 2; }
