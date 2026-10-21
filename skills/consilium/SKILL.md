@@ -113,7 +113,7 @@ judgment. Ask each seat in `## Risks & gaps` to name what it did not read.
 
 **Secrets first, as in review mode, and here it is harder:** whatever a seat opens is sent to
 its provider, and you do not choose what it opens. A filename scan is a first look, not a
-control: `rg --files --hidden -g '.env*' -g '*.pem' -g '*.key' -g '*.p12' "<dir>"` finds key files,
+control: `rg --files -uu -g '.env*' -g '*.pem' -g '*.key' -g '*.p12' "<dir>"` finds key files,
 and a content scan for token shapes (`sk-…`, `AKIA…`, `<digits>:AA…` bot tokens, `PRIVATE KEY`)
 finds what was pasted into docs and chat dumps — both miss secrets in unusual shapes. Anything
 beyond the user's own clean tree → **read a staged copy, not the original**: `rsync` it into
