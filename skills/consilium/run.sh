@@ -95,7 +95,7 @@ for d,dirs,files in os.walk(root):
     p=os.path.join(d,n)
     if os.path.islink(p):
       t=os.path.realpath(p)
-      if t==run or t.startswith(run+os.sep) or run.startswith(t+os.sep): print(p); sys.exit(1)' "$read_dir" "$dir" \
+      if os.path.commonpath([t,run]) in (t,run): print(p); sys.exit(1)' "$read_dir" "$dir" \
     || { echo "a symlink in CONSILIUM_READ resolves into the run dir (above); remove it or read a copy" >&2; exit 2; }
 fi
 cd "$dir" || exit 2
