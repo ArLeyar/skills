@@ -13,6 +13,10 @@
 # env:    CONSILIUM_SKIP="codex,agy" (or space-separated)   CONSILIUM_TIMEOUT=540 (seconds per seat, 60..570)
 #         CONSILIUM_CLAUDE_BUDGET=5 (USD)   CONSILIUM_{CLAUDE,CODEX,AGY}_MODEL override one seat of any tier
 #         CONSILIUM_CLAUDE_EFFORT=low|medium|high|xhigh|max   override the claude seat's effort (empty = CLI default)
+#         CONSILIUM_READ=<dir>   opt-in file access: every seat starts IN <dir> instead of its empty scratch, the
+#           claude seat gains Read/Grep/Glob, and the timeout ceiling rises to 1800 (default 1200) because reading a
+#           codebase takes longer than answering a brief. Still read-only: claude has no write tools, codex runs
+#           -s read-only, agy --mode plan. Whatever the seats read leaves the machine — keep secrets out of <dir>.
 #         CONSILIUM_PROFILE=default|<name>   which ACCOUNT the claude and codex seats log in as. The default is
 #           the ordinary one: plain claude, plain codex, nothing exported. <name> means
 #           CLAUDE_CONFIG_DIR=~/.claude-<name> and CODEX_HOME=~/.codex-<name> — the same thing an interactive
@@ -73,6 +77,11 @@ case "$profile" in
      done ;;
 esac
 
+read_dir=""
+if [ -n "${CONSILIUM_READ:-}" ]; then   # resolved from the caller's cwd, like the profile
+  read_dir=$(cd -- "$CONSILIUM_READ" 2>/dev/null && pwd -P) || { echo "CONSILIUM_READ is not a directory: $CONSILIUM_READ" >&2; exit 2; }
+fi
+
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)   # before the cd: $0 may be relative
 cd "$dir" || exit 2
 [ -s brief.md ] || { echo "no brief at $dir/brief.md" >&2; exit 2; }
@@ -95,10 +104,11 @@ case "$claude_e" in ''|low|medium|high|xhigh|max) ;; *) echo "CONSILIUM_CLAUDE_E
 codex_m=${CONSILIUM_CODEX_MODEL:-$codex_m}
 agy_m=${CONSILIUM_AGY_MODEL:-$agy_m}
 
-limit=${CONSILIUM_TIMEOUT:-540}
+if [ -n "$read_dir" ]; then limit_default=1200; limit_max=1800; else limit_default=540; limit_max=570; fi
+limit=${CONSILIUM_TIMEOUT:-$limit_default}
 case "$limit" in ''|*[!0-9]*) echo "CONSILIUM_TIMEOUT must be integer seconds" >&2; exit 2 ;; esac
 limit=$((10#$limit))   # "090" would otherwise be read as octal in the arithmetic below
-[ "$limit" -ge 60 ] && [ "$limit" -le 570 ] || { echo "CONSILIUM_TIMEOUT out of range 60..570 (caller's tool cap is 600s)" >&2; exit 2; }
+[ "$limit" -ge 60 ] && [ "$limit" -le "$limit_max" ] || { echo "CONSILIUM_TIMEOUT out of range 60..$limit_max" >&2; exit 2; }
 budget=${CONSILIUM_CLAUDE_BUDGET:-5}
 [[ $budget =~ ^[0-9]+(\.[0-9]+)?$ ]] && ! [[ $budget =~ ^0*(\.0*)?$ ]] || { echo "CONSILIUM_CLAUDE_BUDGET must be a positive decimal USD amount" >&2; exit 2; }
 
@@ -124,7 +134,7 @@ json.dump({"event":"user","message":{"role":"user","content":c}},sys.stdout); sy
       || { echo "could not build agy's stream-json message" >&2; rm -rf "$wdroot"; exit 2; }
   fi ;;
 esac
-echo "tier=$tier timeout=${limit}s profile=$profile" > panel.txt
+echo "tier=$tier timeout=${limit}s profile=$profile${read_dir:+ read=$read_dir}" > panel.txt
 
 pids=(); started=()
 cleanup() { trap - INT TERM HUP EXIT; [ ${#pids[@]} -gt 0 ] && kill "${pids[@]}" 2>/dev/null; rm -rf "$wdroot"; }
@@ -146,18 +156,20 @@ run() { # run <seat> <stdout-file> <stdin-file> <cmd...>
   command -v "$1" >/dev/null || { echo "missing:$1" > "status.d/$seat"; return; }
   mkdir "$wdroot/$seat" || { echo "exit:mkdir" > "status.d/$seat"; return; }
   # exec makes the job's pid the timeout's pid, so cleanup's kill reaches the seat through timeout's forwarding
-  ( cd "$wdroot/$seat" && seat_account "$seat" && exec "${TO[@]}" -k 30 "$limit" "$@" ) > "$dir/$out" 2> "$dir/$seat.err" < "$in" &
+  ( cd "${read_dir:-$wdroot/$seat}" && seat_account "$seat" && exec "${TO[@]}" -k 30 "$limit" "$@" ) > "$dir/$out" 2> "$dir/$seat.err" < "$in" &
   pids+=("$!"); started+=("$seat")
 }
 
 # claude: prompt on stdin; no hooks, no user settings, no MCP, no skills, no file tools, no transcript, capped spend
+claude_tools="WebSearch,WebFetch"; claude_read=()
+[ -n "$read_dir" ] && { claude_tools="Read,Grep,Glob,WebSearch,WebFetch"; claude_read=(--add-dir "$read_dir" --allowedTools "Read,Grep,Glob"); }
 run claude claude.md brief.md claude -p --model "$claude_m" ${claude_e:+--effort "$claude_e"} --permission-mode dontAsk --permission-prompts none \
-  --tools "WebSearch,WebFetch" --setting-sources "" --strict-mcp-config --disable-slash-commands \
+  --tools "$claude_tools" ${claude_read[@]+"${claude_read[@]}"} --setting-sources "" --strict-mcp-config --disable-slash-commands \
   --no-session-persistence --max-budget-usd "$budget"
 # codex: prompt on stdin via "-"; no user config or rules, effort set here since the config is ignored;
 # -o carries the clean final message, stdout is the transcript (codex.log)
 run codex codex.log brief.md codex exec --skip-git-repo-check --ephemeral --ignore-user-config --ignore-rules \
-  -C "$wdroot/codex" -s read-only --color never -m "$codex_m" -c 'model_reasoning_effort="high"' -o "$dir/codex.md" -
+  -C "${read_dir:-$wdroot/codex}" -s read-only --color never -m "$codex_m" -c 'model_reasoning_effort="high"' -o "$dir/codex.md" -
 # agy: the NDJSON message built above on stdin; --print='' MUST stay attached (as two words --print eats the next
 # flag as its prompt); output is the NDJSON stream, parsed after the run. --print-timeout sits ABOVE the deadline
 # so the deadline wrapper is the only authority. --disable-slash-commands is deliberately absent: it switches --mode plan off.

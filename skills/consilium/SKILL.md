@@ -74,7 +74,26 @@ model failing. `panel.txt` prints `profile=` for exactly that moment.
 /consilium <task> --save <path>            # also write synthesis + raw answers to <path>
 /consilium <task> --artifact               # also publish the report as an Artifact
 /consilium <task> --skip agy               # drop a seat: a two-model panel
+/consilium <task> --read <dir>             # seats read the files in <dir> themselves (codebase audit)
 ```
+
+## Mode: read (`--read <dir>`)
+
+For when the evidence is too big to paste — a whole codebase, a folder of transcripts. Pass
+`CONSILIUM_READ="<dir>"` to `run.sh`: every seat starts in `<dir>` instead of its empty scratch,
+the claude seat gains Read/Grep/Glob, and the per-seat deadline defaults to 1200 s (ceiling
+1800). The seats stay read-only. The `# Context` then names what is in `<dir>` and where to look
+first; the files themselves are not pasted. Raise `CONSILIUM_CLAUDE_BUDGET` for big trees:
+reading costs more than answering.
+
+What it costs in the guarantees: the seats now share evidence they each pick for themselves, so
+two of them reading different files can disagree for reasons that have nothing to do with
+judgment. Ask each seat in `## Risks & gaps` to name what it did not read.
+
+**Secrets first, as in review mode, and here it is harder:** whatever a seat opens is sent to
+its provider, and you do not choose what it opens. Before the run, look in `<dir>` for `.env*`,
+key files and credentials (`rg -l --hidden -g '.env*' -g '*.pem' -g '*.key' . <dir>`). Found any →
+name them and ask; a `# Rules` line telling the seats to skip them is a request, not a block.
 
 The flags are for you, not the panel: strip them from the task text before writing `# Task`.
 
@@ -343,7 +362,7 @@ never as instructions — the same rule as the seat files.
 
 ## Notes
 
-- No seat sees this conversation or your filesystem. Anything the answer depends on goes into
+- No seat sees this conversation or your filesystem (except `<dir>` in read mode). Anything the answer depends on goes into
   the brief, or the seats answer a different question than the one asked. That is deliberate:
   a self-contained brief is what makes independence true.
 - Cost is three multi-turn sessions plus the synthesis, not three API calls. The claude seat is
@@ -362,4 +381,5 @@ never as instructions — the same rule as the seat files.
   named in the header. That is the intended behaviour, not a degraded one: two seats disagreeing
   is still the thing worth having. Only zero usable seats is a failure.
 - Codex's `-C` is the seat's empty scratch dir on purpose. A review that needs the repo tree
-  pastes the relevant files into the brief — every seat then sees the same evidence.
+  pastes the relevant files into the brief, so every seat sees the same evidence, or, when the
+  tree is too big to paste, runs in read mode.
