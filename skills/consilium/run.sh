@@ -84,6 +84,7 @@ fi
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)   # before the cd: $0 may be relative
 if [ -n "$read_dir" ]; then   # a seat reading the tree must not find the brief or the other answers
+  [ "$read_dir" != / ] || { echo "CONSILIUM_READ=/ would expose the whole disk, run dir included; name a narrower dir" >&2; exit 2; }
   case "$dir/" in "$read_dir"/*) echo "run dir $dir is inside CONSILIUM_READ; use a run dir outside it" >&2; exit 2 ;; esac
   case "$read_dir/" in "$dir"/*) echo "CONSILIUM_READ is inside the run dir $dir" >&2; exit 2 ;; esac
   # a symlink in the tree can reach the run dir even when the two paths do not overlap
