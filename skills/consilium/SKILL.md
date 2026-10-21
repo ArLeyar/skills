@@ -84,16 +84,28 @@ For when the evidence is too big to paste — a whole codebase, a folder of tran
 the claude seat gains Read/Grep/Glob, and the per-seat deadline defaults to 1200 s (ceiling
 1800). The seats stay read-only. The `# Context` then names what is in `<dir>` and where to look
 first; the files themselves are not pasted. Raise `CONSILIUM_CLAUDE_BUDGET` for big trees:
-reading costs more than answering.
+reading costs more than answering. The fan-out command in read mode:
+
+```bash
+CONSILIUM_READ="/absolute/read/dir" CONSILIUM_CLAUDE_BUDGET=15 bash "/resolved/skill/dir/run.sh" "/resolved/run/dir" high
+```
+
+The run dir and `<dir>` must not overlap (neither inside the other) — the runner refuses that,
+because a seat reading the tree would find `brief.md` and the other seats' answers.
 
 What it costs in the guarantees: the seats now share evidence they each pick for themselves, so
 two of them reading different files can disagree for reasons that have nothing to do with
 judgment. Ask each seat in `## Risks & gaps` to name what it did not read.
 
 **Secrets first, as in review mode, and here it is harder:** whatever a seat opens is sent to
-its provider, and you do not choose what it opens. Before the run, look in `<dir>` for `.env*`,
-key files and credentials (`rg -l --hidden -g '.env*' -g '*.pem' -g '*.key' . <dir>`). Found any →
-name them and ask; a `# Rules` line telling the seats to skip them is a request, not a block.
+its provider, and you do not choose what it opens. A filename scan is a first look, not a
+control: `rg -l --hidden -g '.env*' -g '*.pem' -g '*.key' -g '*.p12' -- "<dir>"` finds key files,
+and a content scan for token shapes (`sk-…`, `AKIA…`, `<digits>:AA…` bot tokens, `PRIVATE KEY`)
+finds what was pasted into docs and chat dumps — both miss secrets in unusual shapes. Anything
+beyond the user's own clean tree → **read a staged copy, not the original**: `rsync` it into
+scratch without `.git`, `node_modules`, builds and binaries, redact the hits there, point
+`CONSILIUM_READ` at the copy. Found something you cannot redact → name it and ask. A `# Rules`
+line telling the seats to skip files is a request, not a block.
 
 The flags are for you, not the panel: strip them from the task text before writing `# Task`.
 
@@ -272,8 +284,9 @@ omitting the assignment entirely, not naming it. Seats are `claude`, `codex`, `a
 `high`, `medium`, `low` — anything else is a typo, not a value to pass through.
 
 `run_in_background: true`, always — the seats take minutes. Do not poll; the completion
-notification is the signal. The per-seat deadline (`CONSILIUM_TIMEOUT`, default 540 s, enforced by GNU
-`timeout` or, where it is absent, by `deadline.py`; refused above 570) is the guarantee that the runner returns and `status.tsv`
+notification is the signal. The per-seat deadline (`CONSILIUM_TIMEOUT`, default 540 s and refused above
+570; in read mode default 1200 s and refused above 1800; enforced by GNU
+`timeout` or, where it is absent, by `deadline.py`) is the guarantee that the runner returns and `status.tsv`
 is complete; it does not depend on any tool cap. Never reproduce the seat commands inline: the
 script carries the flag quirks that already bit.
 

@@ -83,6 +83,10 @@ if [ -n "${CONSILIUM_READ:-}" ]; then   # resolved from the caller's cwd, like t
 fi
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)   # before the cd: $0 may be relative
+if [ -n "$read_dir" ]; then   # a seat reading the tree must not find the brief or the other answers
+  case "$dir/" in "$read_dir"/*) echo "run dir $dir is inside CONSILIUM_READ; use a run dir outside it" >&2; exit 2 ;; esac
+  case "$read_dir/" in "$dir"/*) echo "CONSILIUM_READ is inside the run dir $dir" >&2; exit 2 ;; esac
+fi
 cd "$dir" || exit 2
 [ -s brief.md ] || { echo "no brief at $dir/brief.md" >&2; exit 2; }
 mkdir status.d 2>/dev/null || { echo "$dir already holds a run; use a fresh dir" >&2; exit 2; }   # atomic claim, kept after the run
@@ -160,7 +164,8 @@ run() { # run <seat> <stdout-file> <stdin-file> <cmd...>
   pids+=("$!"); started+=("$seat")
 }
 
-# claude: prompt on stdin; no hooks, no user settings, no MCP, no skills, no file tools, no transcript, capped spend
+# claude: prompt on stdin; no hooks, no user settings, no MCP, no skills, no transcript, capped spend; no file tools
+# unless read mode, which adds read-only Read/Grep/Glob on <dir> — that tree's contents then reach a web-enabled seat
 claude_tools="WebSearch,WebFetch"; claude_read=()
 [ -n "$read_dir" ] && { claude_tools="Read,Grep,Glob,WebSearch,WebFetch"; claude_read=(--add-dir "$read_dir" --allowedTools "Read,Grep,Glob"); }
 run claude claude.md brief.md claude -p --model "$claude_m" ${claude_e:+--effort "$claude_e"} --permission-mode dontAsk --permission-prompts none \
