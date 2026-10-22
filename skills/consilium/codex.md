@@ -34,7 +34,9 @@ through a run that never started.
 
 `CONSILIUM_TIMEOUT` defaults to 540 s and is capped at 570 because Claude Code's tool cap is
 600. Detached here, that ceiling is not binding, but leave it alone anyway: a seat still
-thinking after nine minutes is a seat that will not produce a usable answer.
+thinking after nine minutes is a seat that will not produce a usable answer. Read mode
+(`CONSILIUM_READ=<dir>`, see SKILL.md) is the exception: seats read a tree before answering,
+so it defaults to 1200 s and is capped at 1800 — poll accordingly.
 
 ## Network
 
